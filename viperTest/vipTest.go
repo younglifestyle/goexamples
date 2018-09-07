@@ -29,6 +29,9 @@ func main() {
 	environment := viper.GetBool("security.enabled")
 	fmt.Println("security.enabled:", environment)
 
+	environment1 := viper.GetBool("security.enableds")
+	fmt.Println("security.enableds:", environment1)
+
 	fullstate := viper.GetString("statetransfer.timeout.fullstate")
 	fmt.Println("statetransfer.timeout.fullstate:", fullstate)
 
