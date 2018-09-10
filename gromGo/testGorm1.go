@@ -79,6 +79,7 @@ func main() {
 
 	//db.First(&p2, 1) // 查询id为1的product
 
+	// 使用first和find查找单个数据时，没有找到会报错，若接受单位为数组则没有数据将不会报错
 	var p123 []Product
 	d1 := db.Table("products").
 		Find(&p123, "code = ?", "L2137421")
@@ -122,8 +123,10 @@ func main() {
 	//ds1.Scan(&testArr).Count(&num)
 	//fmt.Println("array112 :", testArr)
 
-	db.Table("products").Where("id = ?", "1").Count(&num)
-	fmt.Println("num :", num)
+	var testArr1 []Product
+	db.Table("products").Where("id = ?", "1").Select("id").
+		Find(&testArr1).Count(&num)
+	fmt.Println("num1 :", num, testArr1)
 
 	// unsupported destination, should be slice or struct
 	//fmt.Println("err01 ,",
