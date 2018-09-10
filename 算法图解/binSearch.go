@@ -15,7 +15,7 @@ func binSearch(list []int, needFindData int) (index int) {
 		mid = (lowIndex + highIndex) / 2 // 此处有可能溢出
 
 		if list[mid] == needFindData {
-			return mid
+			return mid + 1
 		} else if needFindData > list[mid] {
 			lowIndex = mid + 1
 		} else {
@@ -23,34 +23,10 @@ func binSearch(list []int, needFindData int) (index int) {
 		}
 	}
 
-	return mid
-}
-
-func directSelectAlgo(arr []int) {
-
-	for i := 0; i < len(arr)-1; i++ {
-
-		min := i
-		for j := i + 1; j < len(arr); j++ {
-			if arr[min] > arr[j] {
-				min = j
-			}
-		}
-
-		if min != i {
-			arr[min], arr[i] = arr[i], arr[min]
-		}
-	}
-
-	fmt.Println(arr)
+	return 0
 }
 
 func main() {
 	a := []int{1, 4, 5, 6, 8, 12, 43, 52}
-
-	fmt.Println("index :", binSearch(a, 52))
-
-	a1 := []int{1, 45, 34, 65, 0, 12, 43, 52}
-	directSelectAlgo(a1)
-
+	fmt.Println("index :", binSearch(a, 5))
 }
