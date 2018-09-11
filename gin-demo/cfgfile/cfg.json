@@ -1,0 +1,8 @@
+{
+  "log_level": "debug",
+  "http": {
+    "enabled": true,
+    "listen": "127.0.0.1:8084"
+  },
+  "dsn": "root:xxx@/filemanager?charset=utf8&parseTime=True&loc=Local"
+}
