@@ -56,7 +56,10 @@ func main() {
 		C: session.DB("test").C("people"),
 	}
 
-	r.C.Insert(&Person{"Heln", "+55 53 8116 9639"})
+	r.C.Insert(&Person{"Heln", "+55 53 8116 9639"},
+		&Person{"Ana", "+51 53 8116 9639"},
+		&Person{"A3a", "+51 53 8116 9639"},
+		&Person{"Awa", "+51 53 8116 9623"})
 
 	r.Create(&User{
 		Name:     "test",
@@ -64,30 +67,12 @@ func main() {
 	})
 
 	fmt.Println(r.GetAll())
-}
-
-func officalTest() {
-	session, err := mgo.Dial("")
-	if err != nil {
-		panic(err)
-	}
-	defer session.Close()
-
-	// Optional. Switch the session to a monotonic behavior.
-	session.SetMode(mgo.Monotonic, true)
-
-	c := session.DB("test").C("people")
-	err = c.Insert(&Person{"Ale", "+55 53 8116 9639"},
-		&Person{"Cla", "+55 53 8402 8510"})
-	if err != nil {
-		panic(err)
-	}
 
 	result := Person{}
-	err = c.Find(bson.M{"name": "Ale"}).One(&result)
+	err = r.C.Find(bson.M{"name": "Ale"}).One(&result)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Phone:", result.Phone)
+	fmt.Println("result :", result)
 }
