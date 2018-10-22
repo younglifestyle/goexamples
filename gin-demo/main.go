@@ -6,8 +6,9 @@ import (
 	"goexamples/gin-demo/config"
 	"goexamples/gin-demo/dbops/db"
 	"goexamples/gin-demo/handlers/articles"
-	"log"
 	"os"
+
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -23,6 +24,7 @@ func RegisterHandlers() *gin.Engine {
 
 	router := gin.Default()
 
+	router.Static("/image", "./static/image")
 	router.NoRoute(page404)
 	router.Use(db.Connect)
 
