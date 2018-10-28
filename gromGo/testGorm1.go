@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -9,9 +10,10 @@ import (
 
 type Product struct {
 	//gorm.Model
-	Id    int
-	Code  string
-	Price uint
+	Id        int
+	Code      string
+	Price     uint
+	CreatedAt time.Time `gorm:"times"`
 }
 type P1 struct {
 	//gorm.Model
@@ -28,13 +30,17 @@ func main() {
 	defer db.Close()
 
 	//// 自动迁移模式
-	db.AutoMigrate(&Product{})
+	if err := db.AutoMigrate(&Product{}).Error; err != nil {
+		fmt.Println("error :", err)
+		return
+	}
+
 	//
 	// 创建
-	p1 := Product{Code: "L1242", Price: 1100}
+	p1 := Product{Code: "L1234242", Price: 1100}
 	db.Create(&p1)
 	db.Create(&Product{Code: "L1211", Price: 1001})
-	e := db.Table("products").Create(&P1{Id: "15", Code: "L1251"}).Error
+	e := db.Table("products").Create(&P1{Id: "10", Code: "L1251"}).Error
 	fmt.Println("error :", e)
 
 	var product1 Product
@@ -52,6 +58,7 @@ func main() {
 	//}
 
 	db.Create(&Product{Id: 16, Code: "L1213", Price: 12144})
+	db.Create(&Product{Id: 134, Code: "L1213", Price: 12144})
 
 	db.Table("products").Where("id = ?", 16).
 		Update(&Product{Id: 16, Code: "L1213333", Price: 12144})
@@ -79,6 +86,7 @@ func main() {
 
 	//db.First(&p2, 1) // 查询id为1的product
 
+	// 使用first和find查找单个数据时，没有找到会报错，若接受单位为数组则没有数据将不会报错
 	var p123 []Product
 	d1 := db.Table("products").
 		Find(&p123, "code = ?", "L2137421")
@@ -122,10 +130,31 @@ func main() {
 	//ds1.Scan(&testArr).Count(&num)
 	//fmt.Println("array112 :", testArr)
 
-	db.Table("products").Where("id = ?", "1").Count(&num)
-	fmt.Println("num :", num)
+	var testArr1 []Product
+	dts := db.Table("products").
+		Limit(5).
+		//Where("id = ?", "1").Select("id").
+		Find(&testArr1)
+	dts.Count(&num)
+	fmt.Println("num1 :", num, testArr1)
+
+	query := db.Table("products").
+		Select("id").
+		Where("code in (?)", []string{"L1213", "L1251"}).SubQuery()
+
+	db.Table("products").Select("*").
+		Joins("INNER JOIN ? AS t1 using(id)", query).
+		Find(&testArr1)
+	fmt.Println("num2222 :", testArr1)
 
 	// unsupported destination, should be slice or struct
 	//fmt.Println("err01 ,",
 	//	db.Table("products").First(nil, "id = ?", 30).Error)
+
+	var res1 Product
+	db.Where("id = ?", 1243).Assign(Product{
+		Code:  "L12345",
+		Price: 123456,
+	}).FirstOrInit(&res1)
+	fmt.Println("test :", res1)
 }
