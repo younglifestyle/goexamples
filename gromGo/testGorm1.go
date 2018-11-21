@@ -13,7 +13,8 @@ type Product struct {
 	Id        int
 	Code      string
 	Price     uint
-	CreatedAt time.Time `gorm:"times"`
+	CreatedAt time.Time  `gorm:"times"`
+	DeletedAt *time.Time `sql:"index"`
 }
 type P1 struct {
 	//gorm.Model
@@ -157,4 +158,10 @@ func main() {
 		Price: 123456,
 	}).FirstOrInit(&res1)
 	fmt.Println("test :", res1)
+
+	// CreatedAt 若指定时间，将按照指定时间存储
+	now := time.Date(2018, time.November, 11, 23, 0, 0, 0, time.UTC)
+	fmt.Println("time now :", now)
+	p21 := Product{Id: 1, Code: "L1234242", Price: 1100, CreatedAt: now}
+	db.Create(&p21)
 }
