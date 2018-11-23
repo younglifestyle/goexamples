@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -147,6 +148,18 @@ func main() {
 		Joins("INNER JOIN ? AS t1 using(id)", query).
 		Find(&testArr1)
 	fmt.Println("num2222 :", testArr1)
+
+	times := time.Now()
+	productTest := &Product{Id: 123, Code: "L1213",
+		Price: 12144, CreatedAt: times}
+	db.Create(productTest)
+	fmt.Println("time :", times)
+
+	marshal, _ := json.Marshal(productTest)
+	fmt.Println("byte is :", string(marshal))
+	var ttt1 Product
+	json.Unmarshal(marshal, &ttt1)
+	fmt.Println("2222 byte is :", ttt1)
 
 	// unsupported destination, should be slice or struct
 	//fmt.Println("err01 ,",

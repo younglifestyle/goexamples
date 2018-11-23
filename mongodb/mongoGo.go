@@ -44,6 +44,11 @@ func (r *Repository) Delete(id string) error {
 	return r.C.Remove(bson.M{"_id": bson.ObjectIdHex(id)})
 }
 
+type TwoParam struct {
+	Test1 int           `json:"test1" bson:"test1"`
+	Test2 bson.ObjectId `json:"test2" bson:"test2"`
+}
+
 type BindFileIDMgo struct {
 	Id                  bson.ObjectId   `json:"id" bson:"_id,omitempty"`
 	ProductId           int             `json:"product_id" bson:"product_id"`
@@ -51,6 +56,7 @@ type BindFileIDMgo struct {
 	ModuleId            int             `json:"module_id" bson:"module_id"`
 	FileIdBeBindModule  []int           `json:"fileid_bind_module" bson:"fileid_bind_module,omitempty"`
 	Test                []bson.ObjectId `json:"test" bson:"test,omitempty"`
+	ArrTest             []TwoParam      `json:"testArr" bson:"testArr,omitempty"`
 }
 
 func main() {
@@ -65,29 +71,6 @@ func main() {
 	r := Repository{
 		C: session.DB("test").C("people"),
 	}
-
-	//r.C.Insert(&Person{"Heln", "+55 53 8116 9639"},
-	//	&Person{"Ana", "+51 53 8116 9639"},
-	//	&Person{"A3a", "+51 53 8116 9639"},
-	//	&Person{"Awa", "+51 53 8116 9623"})
-
-	//id := bson.NewObjectId()
-	//testUser := &User{
-	//	Id:       id,
-	//	Name:     "qweqwe",
-	//	LastName: "unknow",
-	//}
-
-	//err = r.C.Insert(testUser)
-	//marshal, _ := bson.Marshal(testUser)
-	//err = r.C.Insert(bson.M{
-	//	"_id":      id,
-	//	"name":     "test",
-	//	"lastname": "unknow",
-	//})
-	//fmt.Println("id :", id, err)
-
-	//fmt.Println(r.GetAll())
 
 	//result := Person{}
 	var tes map[string]interface{}
@@ -113,40 +96,102 @@ func main() {
 	//
 	//fmt.Println("result :", result, tes)
 
+	//idTest123 := bson.NewObjectId()
+	//err = r.C.Insert(BindFileIDMgo{
+	//	Id:                 idTest123,
+	//	ProductId:          123,
+	//	FileIdBeBindModule: []int{1, 2, 3},
+	//})
+	//fmt.Println("result error :", err)
+	//
+	//idTest := bson.NewObjectId()
+	//idTest1 := bson.NewObjectId()
+	//err = r.C.Insert(map[string]interface{}{
+	//	"test": []bson.ObjectId{idTest1},
+	//	"_id":  idTest,
+	//})
+	//fmt.Println("result id :", idTest)
+	//
+	//ids := bson.NewObjectId()
+	//err = r.C.Insert(BindFileIDMgo{
+	//	Test: []bson.ObjectId{ids},
+	//})
+
+	//twoLevelArrMacthFind(r)
+
+	usePipeRequiredArray(r)
+	//testObjectJson()
+}
+
+// 匹配两层数组的方式
+// 删除数组元素
+func twoLevelArrMacthFind(r Repository) {
 	idTest123 := bson.NewObjectId()
-	err = r.C.Insert(BindFileIDMgo{
+	err := r.C.Insert(BindFileIDMgo{
 		Id:                 idTest123,
 		ProductId:          123,
 		FileIdBeBindModule: []int{1, 2, 3},
+		ArrTest: []TwoParam{
+			{Test1: 1, Test2: bson.NewObjectId()},
+			{Test1: 12, Test2: bson.NewObjectId()},
+		},
 	})
-	fmt.Println("result error :", err)
 
-	idTest := bson.NewObjectId()
-	idTest1 := bson.NewObjectId()
-	err = r.C.Insert(map[string]interface{}{
-		"test": []bson.ObjectId{idTest1},
-		"_id":  idTest,
-	})
-	fmt.Println("result id :", idTest)
+	var testData interface{}
+	err = r.C.Find(map[string]interface{}{
+		"_id": idTest123,
+		"testArr": map[string]interface{}{
+			"$elemMatch": map[string]interface{}{"test1": 1},
+		},
+	}).One(&testData)
+
+	fmt.Println("error :", err)
+	fmt.Println("result 123 :", testData)
+
+	// 删除数组元素
+	r.C.Update(map[string]interface{}{
+		"_id": idTest123},
+		map[string]interface{}{
+			"$pull": map[string]interface{}{
+				"testArr": map[string]interface{}{
+					"test1": 1}}})
+	fmt.Println("delete param result :", idTest123, err)
 
 	err = r.C.Update(map[string]interface{}{
+		"_id": idTest123,
+	}, map[string]interface{}{
+		"$push": map[string]interface{}{
+			"testArr": TwoParam{Test1: 1123,
+				Test2: bson.NewObjectId()}}})
+}
+
+// 匹配单层数组的方式
+func oneLevelArrMatchFind(r Repository) {
+	var bind BindFileIDMgo
+	err := r.C.Find(map[string]interface{}{
+		"test": map[string]interface{}{
+			"$elemMatch": map[string]interface{}{"$eq": "123"},
+		},
+	}).One(&bind)
+	fmt.Println("error test :", bind, err)
+}
+
+// 删除数组中的元素
+func deleteArrayParam(r Repository) {
+	idTest := bson.NewObjectId()
+	err := r.C.Update(map[string]interface{}{
 		"_id": idTest,
 	}, map[string]interface{}{
 		"$pull": map[string]interface{}{
-			"test": idTest1,
+			"test": "123",
 		},
 	})
 	fmt.Println("error :", err)
+}
 
-	pipe := r.C.Pipe([]bson.M{
-		{"$match": bson.M{"_id": idTest123}},
-		{"$project": bson.M{"count": bson.M{"$size": "$fileid_bind_module"}}},
-	})
-	resp := bson.M{}
-	err = pipe.One(&resp)
-	fmt.Println("error is :", err, resp)
-
-	err = r.C.Update(map[string]interface{}{
+// 确保插入不重复的参数
+func noRepeatInsertParam(r Repository) {
+	err := r.C.Update(map[string]interface{}{
 		"_id": bson.ObjectIdHex("5bebe0cf7f45aa3270c9e532"),
 	}, map[string]interface{}{
 		"$addToSet": map[string]string{
@@ -154,21 +199,44 @@ func main() {
 		},
 	})
 	fmt.Println("error :", err)
+}
 
-	ids := bson.NewObjectId()
-	err = r.C.Insert(BindFileIDMgo{
-		Test: []bson.ObjectId{ids},
-	})
-
-	var bind BindFileIDMgo
-	err = r.C.Find(map[string]interface{}{
-		"test": map[string]interface{}{
-			"$elemMatch": map[string]interface{}{"$eq": ids},
+// 聚合的复杂方法
+func usePipeRequiredArray(r Repository) {
+	idTest123 := bson.NewObjectId()
+	err := r.C.Insert(BindFileIDMgo{
+		Id:                 idTest123,
+		ProductId:          123,
+		FileIdBeBindModule: []int{1, 2, 3},
+		ArrTest: []TwoParam{
+			{Test1: 1, Test2: bson.NewObjectId()},
+			{Test1: 12, Test2: bson.NewObjectId()},
 		},
-	}).One(&bind)
-	fmt.Println("error test :", bind)
+	})
+	fmt.Println("error1 :", err)
 
-	testObjectJson()
+	pipe := r.C.Pipe([]bson.M{
+		{"$match": bson.M{"_id": idTest123, "product_id": 123}},
+		{"$unwind": "$testArr"},
+		{"$skip": 1},
+		{"$limit": 1},
+		{"$project": bson.M{"product_id": 1, "one": "$testArr.test1"}},
+	})
+	resp := bson.M{}
+	err = pipe.One(&resp)
+	fmt.Println("error is :", err, resp)
+}
+
+// 使用MongoDB中的聚合操作，计算MongoDB嵌套数组的大小
+func requiredArraySize(r Repository) {
+	idTest123 := bson.NewObjectId()
+	pipe := r.C.Pipe([]bson.M{
+		{"$match": bson.M{"_id": idTest123}},
+		{"$project": bson.M{"count": bson.M{"$size": "$fileid_bind_module"}}},
+	})
+	resp := bson.M{}
+	err := pipe.One(&resp)
+	fmt.Println("error is :", err, resp)
 }
 
 type TestJson struct {
