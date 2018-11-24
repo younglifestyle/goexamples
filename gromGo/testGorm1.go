@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -13,7 +14,8 @@ type Product struct {
 	Id        int
 	Code      string
 	Price     uint
-	CreatedAt time.Time `gorm:"times"`
+	CreatedAt time.Time  `gorm:"times"`
+	DeletedAt *time.Time `sql:"index"`
 }
 type P1 struct {
 	//gorm.Model
@@ -147,6 +149,18 @@ func main() {
 		Find(&testArr1)
 	fmt.Println("num2222 :", testArr1)
 
+	times := time.Now()
+	productTest := &Product{Id: 123, Code: "L1213",
+		Price: 12144, CreatedAt: times}
+	db.Create(productTest)
+	fmt.Println("time :", times)
+
+	marshal, _ := json.Marshal(productTest)
+	fmt.Println("byte is :", string(marshal))
+	var ttt1 Product
+	json.Unmarshal(marshal, &ttt1)
+	fmt.Println("2222 byte is :", ttt1)
+
 	// unsupported destination, should be slice or struct
 	//fmt.Println("err01 ,",
 	//	db.Table("products").First(nil, "id = ?", 30).Error)
@@ -157,4 +171,10 @@ func main() {
 		Price: 123456,
 	}).FirstOrInit(&res1)
 	fmt.Println("test :", res1)
+
+	// CreatedAt 若指定时间，将按照指定时间存储
+	now := time.Date(2018, time.November, 11, 23, 0, 0, 0, time.UTC)
+	fmt.Println("time now :", now)
+	p21 := Product{Id: 1, Code: "L1234242", Price: 1100, CreatedAt: now}
+	db.Create(&p21)
 }

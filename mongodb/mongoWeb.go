@@ -2,6 +2,7 @@ package main
 
 import "C"
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -136,6 +137,20 @@ func addInfo(c *gin.Context) {
 	err = coll.C.Find(bson.M{"_id": bson.M{"$lt": bson.ObjectIdHex("5bc6dc74c1962da15157f0f9")}}).
 		All(&etst1)
 	log.Println("error 15 :", etst1, err)
+
+	fileNames := c.DefaultQuery("files", "")
+	if fileNames == "" {
+		c.JSON(http.StatusBadRequest, "INVALID_PARAM")
+		return
+	}
+	arrs := []string{}
+	json.Unmarshal([]byte(fileNames), &arrs)
+	log.Println("array :", arrs[0])
+
+	var etst2 interface{}
+	err = coll.C.Find(nil).
+		Select(bson.M{"test2.test": 1}).One(&etst2)
+	log.Println("error 121 :", etst2, err)
 
 	c.JSON(http.StatusOK, "all is ok")
 }

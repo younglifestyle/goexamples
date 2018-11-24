@@ -10,8 +10,8 @@
     "singlestatedelta": "2s",
     "fullstate": "60s"
   },
-
+  "one": "3322d",
   "peer": {
-    "abcd": "3322d"
+    "abcd": "dsaf"
   }
 }

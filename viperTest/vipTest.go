@@ -1,11 +1,11 @@
 package main
 
 import (
-	"strings"
-
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 )
 
@@ -18,7 +18,7 @@ func main() {
 	viper.SetEnvKeyReplacer(replacer)
 
 	viper.SetConfigName(cmdRoot)
-	viper.AddConfigPath("./")
+	viper.AddConfigPath(`.`)
 
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -37,6 +37,15 @@ func main() {
 
 	abcdValue := viper.GetString("peer.abcd")
 	fmt.Println("peer.abcd:", abcdValue)
+
+	// 更新config后，refresh config文件
+	viper.WatchConfig()
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		//if e.Op&fsnotify.Write == fsnotify.Write {
+		//	abcdValue := viper.GetString("peer.abcd")
+		//	fmt.Println("peer.abcd:", abcdValue)
+		//}
+	})
 }
 
 /*

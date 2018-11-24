@@ -12,7 +12,20 @@ type userInfo struct {
 
 var m sync.Map
 
+func testZhMap() {
+	zhmap := make(map[string]string)
+
+	zhmap["中国"] = "第一"
+
+	s, fl := zhmap["中国"]
+	fmt.Println(s, fl)
+
+	fmt.Println(zhmap)
+}
+
 func main() {
+
+	testZhMap()
 
 	vv, ok := m.LoadOrStore("1", "one")
 	fmt.Println(vv, ok) //one false
