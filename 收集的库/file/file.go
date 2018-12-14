@@ -1,6 +1,7 @@
-package pcsutil
+package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -9,6 +10,16 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/kardianos/osext"
 )
+
+func main() {
+	dir, file := filepath.Split("/home/zanghong/workspace/src/fileManager/mklicense")
+
+	fmt.Println(dir, file)
+
+	dir, file = filepath.Split(dir)
+
+	fmt.Println(dir, file)
+}
 
 // IsIPhoneOS 是否为苹果移动设备
 func IsIPhoneOS() bool {
