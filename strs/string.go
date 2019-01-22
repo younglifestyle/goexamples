@@ -3,9 +3,13 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 func main() {
+
+	split := strings.Split(":8080", ":")
+	fmt.Println(split, len(split))
 
 	paramStr := make([]string, 5)
 

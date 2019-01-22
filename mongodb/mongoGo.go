@@ -82,11 +82,10 @@ func main() {
 	//	panic(err)
 	//}
 
-	//err = r.C.Insert(map[string]interface{}{
-	//	"_id": bson.NewObjectId(),
-	//	"测试":  "1232141",
-	//})
-	//fmt.Println("error :", err)
+	err = r.C.Update(
+		bson.M{"_id": bson.ObjectIdHex("5bf7c63b90054433e0419fe9")},
+		bson.M{"测试": "test"})
+	fmt.Println("error :", err)
 
 	// 查找最后的map
 	//data1, exist := tes["中国"]
