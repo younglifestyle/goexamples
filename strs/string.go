@@ -21,6 +21,5 @@ func main() {
 	for _, val := range paramStr {
 		i, err := strconv.Atoi(val)
 		fmt.Printf("%v %v \n", i, err)
-
 	}
 }
