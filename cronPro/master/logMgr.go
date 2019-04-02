@@ -6,9 +6,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/mongo-go-driver/mongo/findopt"
-	"github.com/mongodb/mongo-go-driver/mongo"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
@@ -54,7 +53,7 @@ func InitLogMgr() {
 
 // 查看任务日志
 func (logMgr *LogMgr) ListLog(name string,
-	skip, limit int) (logArr []*common.JobLog, err error) {
+	skip, limit int64) (logArr []*common.JobLog, err error) {
 
 	// len(logArr)
 	logArr = make([]*common.JobLog, 0)
@@ -62,13 +61,15 @@ func (logMgr *LogMgr) ListLog(name string,
 	// 过滤条件
 	filter := bson.M{"name": "pi"}
 
-	sorting := map[string]int{}
 	// 按照任务开始时间倒排
-	sorting["startTime"] = -1
+	sorting := bson.M{"startTime": -1}
 
 	cursor, err := logMgr.logCollection.Find(context.TODO(),
-		filter, findopt.Sort(sorting), findopt.Skip(int64(skip)),
-		findopt.Limit(int64(limit)))
+		filter, &options.FindOptions{
+			Sort:  sorting,
+			Skip:  &skip,
+			Limit: &limit,
+		})
 	if err != nil {
 		return
 	}
