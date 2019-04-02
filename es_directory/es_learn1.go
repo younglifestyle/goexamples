@@ -136,6 +136,8 @@ func main() {
 		return
 	}
 
+	client.Search().Index(ElasticIndex).Type(ElasticTypeRecord).Do()
+
 	fmt.Println("one list :", searchResult.Hits.TotalHits)
 
 	// 查询插入的数据

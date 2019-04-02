@@ -8,24 +8,91 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	//"github.com/gpmgo/gopm/modules/cae/zip"
 )
 
 func main() {
-	//file, err := os.OpenFile("test.zip", os.O_RDWR|os.O_CREATE, 0755)
-	//fmt.Println(err)
 
-	//zipArc := zip.New(file)
-	//
-	//err = zipArc.AddFile("test",
-	//	"/home/zanghong/zipTest/test")
-	//err = zipArc.AddFile("test1",
-	//	"/home/zanghong/zipTest/test")
-	//fmt.Println(err)
-	//
-	//err = zipArc.Close()
-	//fmt.Println(err)
-	log.Println(filepath.Dir("/home/one"))
+	// /home/zanghong/zipTest/testDir
+	err := zipit("./testDir", "backup.zip")
+
+	log.Println(err)
+}
+
+// zipit("/tmp/documents", "/tmp/backup.zip")
+// zipit("/tmp/report.txt", "/tmp/report-2015.zip")
+func zipit(source, target string) error {
+	var baseDir string
+
+	zipfile, err := os.Create(target)
+	if err != nil {
+		return err
+	}
+	defer zipfile.Close()
+
+	archive := zip.NewWriter(zipfile)
+	defer archive.Close()
+
+	info, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+
+	if isAbs := filepath.IsAbs(source); !isAbs {
+		//source, err = filepath.Abs(source)
+		//		//if err != nil {
+		//		//	return err
+		//		//}
+		source = filepath.Base(source)
+	}
+
+	if info.IsDir() {
+		baseDir = filepath.Base(source)
+	}
+
+	filepath.Walk(source, func(pathStr string, info os.FileInfo, err error) error {
+
+		log.Println(pathStr)
+
+		if err != nil {
+			return err
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+
+		if baseDir != "" {
+			header.Name = filepath.Join(baseDir, strings.TrimPrefix(pathStr, source))
+		}
+
+		if info.IsDir() {
+			header.Name += "/"
+		} else {
+			header.Method = zip.Deflate
+		}
+
+		writer, err := archive.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		file, err := os.Open(pathStr)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		_, err = io.Copy(writer, file)
+		return err
+	})
+
+	return err
 }
 
 func CompressZip() {
