@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -59,7 +60,33 @@ type BindFileIDMgo struct {
 	ArrTest             []TwoParam      `json:"testArr" bson:"testArr,omitempty"`
 }
 
+func timeToObjId() string {
+	var t = time.Now().Unix()
+
+	// 转换成16进制的字符串，再加补齐16个0
+	return fmt.Sprintf("%x0000000000000000", t)
+}
+
+//55bc31f90000000000000000
+//5bf7c5b990054455c0807851
+
+//往前多少天时间戳
+func GetUnixToOldTimeDay(i int) int64 {
+	day := time.Now().Day()
+	oldMonth := day - i
+	t := time.Date(time.Now().Year(), time.Now().Month(), oldMonth, time.Now().Hour(), time.Now().Minute(), time.Now().Second(), time.Now().Nanosecond(), time.Local)
+	return t.Unix()
+}
+
 func main() {
+
+	//fmt.Println(bson.NewObjectId().Hex(), bson.NewObjectId().String())
+	//
+	//var bsonIdArr []bson.ObjectId
+	//str := `["5c6f91f79005443540aa9d69", "5c6f91f79005443540aa9d61"]`
+	//json.Unmarshal([]byte(str), &bsonIdArr)
+	//fmt.Println(bsonIdArr)
+
 	session, err := mgo.Dial("")
 	if err != nil {
 		panic(err)
@@ -82,10 +109,9 @@ func main() {
 	//	panic(err)
 	//}
 
-	//err = r.C.Insert(map[string]interface{}{
-	//	"_id": bson.NewObjectId(),
-	//	"测试":  "1232141",
-	//})
+	//err = r.C.Update(
+	//	bson.M{"_id": bson.ObjectIdHex("5bf7c63b90054433e0419fe9")},
+	//	bson.M{"测试": "test"})
 	//fmt.Println("error :", err)
 
 	// 查找最后的map
@@ -103,6 +129,8 @@ func main() {
 	//	FileIdBeBindModule: []int{1, 2, 3},
 	//})
 	//fmt.Println("result error :", err)
+	//requiredArraySize(r, idTest123)
+
 	//
 	//idTest := bson.NewObjectId()
 	//idTest1 := bson.NewObjectId()
@@ -119,7 +147,8 @@ func main() {
 
 	//twoLevelArrMacthFind(r)
 
-	usePipeRequiredArray(r)
+	//usePipeRequiredArray(r)
+
 	//testObjectJson()
 }
 
@@ -232,14 +261,14 @@ func usePipeRequiredArray(r Repository) {
 }
 
 // 使用MongoDB中的聚合操作，计算MongoDB嵌套数组的大小
-func requiredArraySize(r Repository) {
-	idTest123 := bson.NewObjectId()
+func requiredArraySize(r Repository, idTest123 bson.ObjectId) {
+	//idTest123 := bson.NewObjectId()
 	pipe := r.C.Pipe([]bson.M{
 		{"$match": bson.M{"_id": idTest123}},
 		{"$project": bson.M{"count": bson.M{"$size": "$fileid_bind_module"}}},
 	})
-	resp := bson.M{}
-	err := pipe.One(&resp)
+	resp := make([]map[string]interface{}, 0)
+	err := pipe.All(&resp)
 	fmt.Println("error is :", err, resp)
 }
 
