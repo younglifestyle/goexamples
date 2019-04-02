@@ -211,6 +211,9 @@ func usePipeRequiredArray(r Repository) {
 		ArrTest: []TwoParam{
 			{Test1: 1, Test2: bson.NewObjectId()},
 			{Test1: 12, Test2: bson.NewObjectId()},
+			{Test1: 1232, Test2: bson.NewObjectId()},
+			{Test1: 1232312, Test2: bson.NewObjectId()},
+			{Test1: 142312, Test2: bson.NewObjectId()},
 		},
 	})
 	fmt.Println("error1 :", err)
@@ -224,6 +227,7 @@ func usePipeRequiredArray(r Repository) {
 	})
 	resp := bson.M{}
 	err = pipe.One(&resp)
+	//pipe.All(&resp)
 	fmt.Println("error is :", err, resp)
 }
 
