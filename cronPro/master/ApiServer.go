@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 )
 
 func handleJobSave(c *gin.Context) {
@@ -15,7 +14,7 @@ func handleJobSave(c *gin.Context) {
 		inputs common.Job
 	)
 
-	err := c.BindWith(&inputs, binding.Form)
+	err := c.BindJSON(&inputs)
 	if err != nil {
 		c.JSON(http.StatusBadRequest,
 			common.BuildResponse(-1, err.Error(), nil))
@@ -30,7 +29,7 @@ func handleJobSave(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusInternalServerError,
+	c.JSON(http.StatusOK,
 		common.BuildResponse(0, "success", oldJob))
 }
 
@@ -47,7 +46,7 @@ func handleJobDelete(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusInternalServerError,
+	c.JSON(http.StatusOK,
 		common.BuildResponse(0, "success", oldJob))
 }
 
@@ -61,7 +60,7 @@ func handleJobList(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusInternalServerError,
+	c.JSON(http.StatusOK,
 		common.BuildResponse(0, "success", jobList))
 }
 
@@ -78,7 +77,7 @@ func handleJobKill(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusInternalServerError,
+	c.JSON(http.StatusOK,
 		common.BuildResponse(0, "success", nil))
 
 }
@@ -96,6 +95,28 @@ func handleJobLog(c *gin.Context) {
 		return
 	}
 
+	logArr, err := G_logMgr.ListLog(inputs.Name, int64(inputs.Skip), int64(inputs.Limit))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError,
+			common.BuildResponse(-1, err.Error(), nil))
+		return
+	}
+
+	c.JSON(http.StatusOK,
+		common.BuildResponse(0, "success", logArr))
+}
+
+func handleWorkerList(c *gin.Context) {
+
+	workerArr, err := G_workerMgr.ListWorkers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError,
+			common.BuildResponse(-1, err.Error(), nil))
+		return
+	}
+
+	c.JSON(http.StatusOK,
+		common.BuildResponse(0, "success", workerArr))
 }
 
 func InitApiServer() (err error) {
@@ -103,11 +124,13 @@ func InitApiServer() (err error) {
 	router := gin.Default()
 
 	router.POST("/job/save", handleJobSave)
-	router.POST("/job/delete", handleJobDelete)
-	router.POST("/job/list", handleJobList)
-	router.POST("/job/kill", handleJobSave)
-	router.POST("/job/log", handleJobSave)
-	router.POST("/worker/list", handleJobSave)
+	router.DELETE("/job/delete", handleJobDelete)
+	router.GET("/job/list", handleJobList)
+	router.DELETE("/job/kill", handleJobKill)
+	router.GET("/job/log", handleJobLog)
+	router.GET("/worker/list", handleWorkerList)
+
+	router.StaticFS("/webroot", http.Dir("./webroot"))
 
 	go router.Run(":" + strconv.Itoa(G_config.ApiPort))
 

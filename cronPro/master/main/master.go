@@ -36,12 +36,23 @@ func main() {
 		goto ERR
 	}
 
+	// 初始化服务发现模块
+	if err = master.InitWorkerMgr(); err != nil {
+		goto ERR
+	}
+
+	// 日志管理器
+	master.InitLogMgr()
+
 	//  任务管理器
 	if err = master.InitJobMgr(); err != nil {
 		goto ERR
 	}
 
-	master.InitLogMgr()
+	// 启动Api HTTP服务
+	if err = master.InitApiServer(); err != nil {
+		goto ERR
+	}
 
 	select {}
 

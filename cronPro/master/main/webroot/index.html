@@ -185,10 +185,10 @@
         $("#job-list").on("click", ".delete-job", function(event) { // javascript bind
             var jobName = $(this).parents("tr").children(".job-name").text()
             $.ajax({
-                url: '/job/delete',
-                type: 'post',
+                url: '/job/delete?name='+jobName,
+                type: 'delete',
                 dataType: 'json',
-                data: {name: jobName},
+                // data: {name: jobName},
                 complete: function() {
                     window.location.reload()
                 }
@@ -198,10 +198,10 @@
         $("#job-list").on("click", ".kill-job", function(event) {
             var jobName = $(this).parents("tr").children(".job-name").text()
             $.ajax({
-                url: '/job/kill',
-                type: 'post',
+                url: '/job/kill?name='+jobName,
+                type: 'delete',
                 dataType: 'json',
-                data: {name: jobName},
+                // data: {name: jobName},
                 complete: function() {
                     window.location.reload()
                 }
@@ -214,7 +214,7 @@
                 url: '/job/save',
                 type: 'post',
                 dataType: 'json',
-                data: {job: JSON.stringify(jobInfo)},
+                data: JSON.stringify(jobInfo),
                 complete: function() {
                     window.location.reload()
                 }
@@ -237,9 +237,9 @@
 
             // 请求/job/log接口
             $.ajax({
-                url: "/job/log",
+                url: '/job/log?name='+jobName,
                 dataType: 'json',
-                data: {name: jobName},
+                // data: {name: jobName},
                 success: function(resp) {
                     if (resp.errno != 0) {
                         return

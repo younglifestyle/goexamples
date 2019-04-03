@@ -154,7 +154,7 @@ func (jobMgr *JobMgr) KillJob(name string) (err error) {
 		leaseGrantResp *clientv3.LeaseGrantResponse
 	)
 
-	killerKey = common.JOB_SAVE_DIR + name
+	killerKey = common.JOB_KILLER_DIR + name
 
 	// 让worker监听到一次put操作, 创建一个租约让其稍后自动过期即可
 	if leaseGrantResp, err = jobMgr.lease.Grant(context.TODO(), 1); err != nil {
