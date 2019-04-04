@@ -2,6 +2,7 @@ package worker
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"goexamples/cronPro/common"
@@ -120,7 +121,7 @@ func (scheduler *Scheduler) handleJobResult(result *common.JobExecuteResult) {
 		jobLog = &common.JobLog{
 			JobName:      result.ExecuteInfo.Job.Name,
 			Command:      result.ExecuteInfo.Job.Command,
-			Output:       string(result.Output),
+			Output:       common.SliceToString(result.Output),
 			PlanTime:     result.ExecuteInfo.PlanTime.UnixNano() / 1000 / 1000,
 			ScheduleTime: result.ExecuteInfo.RealTime.UnixNano() / 1000 / 1000,
 			StartTime:    result.StartTime.UnixNano() / 1000 / 1000,
@@ -129,7 +130,11 @@ func (scheduler *Scheduler) handleJobResult(result *common.JobExecuteResult) {
 		if result.Err != nil {
 			jobLog.Err = result.Err.Error()
 		} else {
-			jobLog.Err = ""
+			if timeoutKillFlg := strings.Contains(jobLog.Output, "killed"); timeoutKillFlg {
+				jobLog.Err = "the task timed out and was quit"
+			} else {
+				jobLog.Err = ""
+			}
 		}
 		G_logSink.Append(jobLog)
 	}

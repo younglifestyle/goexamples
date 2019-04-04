@@ -14,6 +14,7 @@ type Job struct {
 	Name     string `json:"name" form:"name" binding:"required"`         //  任务名
 	Command  string `json:"command" form:"command"  binding:"required"`  // shell命令
 	CronExpr string `json:"cronExpr" form:"cronExpr" binding:"required"` // cron表达式
+	TimeOut  int    `json:"timeout" form:"timeout"`                      // 任务超时时间
 }
 
 // log list
@@ -159,7 +160,15 @@ func BuildJobExecuteInfo(jobSchedulePlan *JobSchedulePlan) (jobExecuteInfo *JobE
 		PlanTime: jobSchedulePlan.NextTime, // 计算调度时间
 		RealTime: time.Now(),               // 真实调度时间
 	}
-	jobExecuteInfo.CancelCtx, jobExecuteInfo.CancelFunc = context.WithCancel(context.TODO())
+
+	// new add 增加任务timeout时间
+	if jobSchedulePlan.Job.TimeOut != 0 {
+		jobExecuteInfo.CancelCtx, jobExecuteInfo.CancelFunc = context.WithTimeout(context.TODO(),
+			time.Duration(jobSchedulePlan.Job.TimeOut)*time.Second)
+	} else {
+		jobExecuteInfo.CancelCtx, jobExecuteInfo.CancelFunc = context.WithCancel(context.TODO())
+	}
+
 	return
 }
 
