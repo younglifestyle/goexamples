@@ -3,10 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"runtime"
-	"time"
-
 	"goexamples/cronPro/worker"
+	"runtime"
 )
 
 var (
@@ -68,11 +66,7 @@ func main() {
 	}
 
 	// 正常退出
-	for {
-		time.Sleep(1 * time.Second)
-	}
-
-	return
+	select {}
 
 ERR:
 	fmt.Println(err)

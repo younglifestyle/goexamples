@@ -54,8 +54,9 @@ func (executor *Executor) ExecuteJob(info *common.JobExecuteInfo) {
 			// 上锁成功后，重置任务启动时间
 			result.StartTime = time.Now()
 
-			// 执行shell命令
-			cmd = exec.CommandContext(info.CancelCtx, "/bin/bash", "-c", info.Job.Command)
+			// 执行shell命令 "/bin/bash" `C:\Program Files\Git\bin\bash.exe`
+			cmd = exec.CommandContext(info.CancelCtx,
+				"/bin/bash", "-c", info.Job.Command)
 
 			// 执行并捕获输出
 			output, err = cmd.CombinedOutput()

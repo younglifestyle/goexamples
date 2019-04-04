@@ -7,7 +7,7 @@ import (
 
 	"goexamples/cronPro/common"
 
-	"github.com/coreos/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3"
 )
 
 // 注册节点到etcd： /cron/workers/IP地址

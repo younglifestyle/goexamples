@@ -65,11 +65,9 @@ func (logMgr *LogMgr) ListLog(name string,
 	sorting := bson.M{"startTime": -1}
 
 	cursor, err := logMgr.logCollection.Find(context.TODO(),
-		filter, &options.FindOptions{
-			Sort:  sorting,
-			Skip:  &skip,
-			Limit: &limit,
-		})
+		filter,
+		options.Find().SetSort(sorting).
+			SetSkip(skip).SetLimit(limit))
 	if err != nil {
 		return
 	}
