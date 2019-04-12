@@ -2,92 +2,261 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
-	"flag"
+	"bytes"
+	"encoding/csv"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
+
+	"github.com/gpmgo/gopm/modules/log"
 )
+
+/*
+ * 1、良率 = 良品数量 / 测试数量 * 100%——该良率统计时良品数量须剔除重复UID统计，
+则每一个UID以最后1次测试（测试时间最晚）的测试结果为准进行统计计算；
+每一行表示一次测试，BIN1/BIN2表示良品，
+其他为不良品；——仅有BIN1为良品，BIN2、BIN3、BIN4为不良品；
+ * 2、统计BIN1, BIN2, BIN4的数量及百分比，以及非BIN1类别的errcode占比。
+——BIN别统计希望涵盖工具定义的所有BIN别，BIN1、BIN2、BIN3、BIN4全部都进行对应统计,
+以防有出现BIN3没有统计到的情况。
+ * 3、分别统计块坏数量、坏块的block number出现的所占比例（或者统计每个blk是坏块的比例），
+最后形成一个坏块的blk number 占比分布图呈现坏块的大致分布情况。
+ * 4．HY 2Gb 需分别按照ECC卡0bit、ECC卡2bit这 2种情况进行以上数据统计，
+形成数据结果对比。
+*/
+// 0 UID    2 bin  3  【error code】
+// 5       6        7     8
+// 原厂数   新增坏块   原厂   新增坏块
 
 const (
 	fileName = "logAnalysisResult.txt"
-	blk0     = "0000"
-	blk2     = "0002"
-	blk4     = "0004"
-	blk6     = "0006"
-	blk8     = "0008"
-	blk10    = "0010"
-	blk12    = "0012"
-	blk14    = "0014"
 )
 
 var (
-	badBlkMap  map[string]int
+	count  int64
+	blkMap map[string]*analysisTestInfo
+
+	binMap     map[string]map[string]int
 	logFileDir string
 )
 
-func main() {
-	flag.StringVar(&logFileDir, "logpath", `.\logpath`, "log文件的目录")
-	flag.Parse()
-	fmt.Println("start analysis the log in ", `"`+logFileDir+`"`)
+type analysisTestInfo struct {
+	binStr   string
+	errStr   string
+	testTime int64
+	FacN     int
+	lowN     int
+	FacNo    *[]string
+	LowNo    *[]string
+}
 
-	badBlkMap = make(map[string]int)
-
-	err := analyzeLog(logFileDir)
-	if err != nil {
-		fmt.Println("error :", err)
-		return
-	}
-
-	marshal, _ := json.Marshal(badBlkMap)
-	fmt.Println(string(marshal))
-	fmt.Printf("\r\n良品中各个坏块的占比 :\r\n")
-	fmt.Printf("blk0: %f%%, blk2: %f%%, "+
-		"blk4: %f%%, blk6: %f%%, "+
-		"blk8: %f%%,  blk10: %f%%, "+
-		"blk12: %f%%, blk14: %f%% \r\n",
-		float64(float64(badBlkMap["blk0"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk2"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk4"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk6"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk8"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk10"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk12"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk14"]*100)/float64(badBlkMap["count"])))
-	fmt.Printf("\r\n良品记录坏块的占比(记录单次) :\r\n")
-	fmt.Printf("blk: %f%% \r\n",
-		float64(float64(badBlkMap["match_bad_blk"]*100)/float64(badBlkMap["count"])))
-
-	f, err := os.OpenFile(fileName,
-		os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
-	if err != nil {
-		return
-	}
-	w := bufio.NewWriter(f)
-	fmt.Fprintln(w, fmt.Sprintf("start analysis log at the %s \r\n", `"`+logFileDir+`"`))
-	fmt.Fprintln(w, fmt.Sprintf("记录总数 : %d，良品共有%d片芯片出现坏块，占比 %f%% \r\n",
-		badBlkMap["count"], badBlkMap["match_bad_blk"],
-		float64(float64(badBlkMap["match_bad_blk"]*100)/float64(badBlkMap["count"]))))
-	fmt.Fprintln(w, fmt.Sprintf("良品中各个坏块的占比 :"))
-	fmt.Fprintln(w, fmt.Sprintf("blk0: %f%%, blk2: %f%%, "+
-		"blk4: %f%%, blk6: %f%%, "+
-		"blk8: %f%%,  blk10: %f%%, "+
-		"blk12: %f%%, blk14: %f%% \r\n",
-		float64(float64(badBlkMap["blk0"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk2"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk4"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk6"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk8"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk10"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk12"]*100)/float64(badBlkMap["count"])),
-		float64(float64(badBlkMap["blk14"]*100)/float64(badBlkMap["count"]))))
-
-	//fmt.Fprintln(w, fmt.Sprintf("良品记录坏块的占比(记录单次) :"))
-	//fmt.Fprintln(w, fmt.Sprintf("blk: %f%% \r\n",
+func oldCode() {
+	//flag.StringVar(&logFileDir, "logpath", `.\logpath`, "log文件的目录")
+	//flag.Parse()
+	//fmt.Println("start analysis the log in ", `"`+logFileDir+`"`)
+	//
+	//badBlkMap = make(map[string]int)
+	//
+	//err := analyzeLog(logFileDir)
+	//if err != nil {
+	//	fmt.Println("error :", err)
+	//	return
+	//}
+	//
+	//marshal, _ := json.Marshal(badBlkMap)
+	//fmt.Println(string(marshal))
+	//fmt.Printf("\r\n良品中各个坏块的占比 :\r\n")
+	//fmt.Printf("blk0: %f%%, blk2: %f%%, "+
+	//	"blk4: %f%%, blk6: %f%%, "+
+	//	"blk8: %f%%,  blk10: %f%%, "+
+	//	"blk12: %f%%, blk14: %f%% \r\n",
+	//	float64(float64(badBlkMap["blk0"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk2"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk4"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk6"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk8"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk10"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk12"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk14"]*100)/float64(badBlkMap["count"])))
+	//fmt.Printf("\r\n良品记录坏块的占比(记录单次) :\r\n")
+	//fmt.Printf("blk: %f%% \r\n",
+	//	float64(float64(badBlkMap["match_bad_blk"]*100)/float64(badBlkMap["count"])))
+	//
+	//f, err := os.OpenFile(fileName,
+	//	os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	//if err != nil {
+	//	return
+	//}
+	//w := bufio.NewWriter(f)
+	//fmt.Fprintln(w, fmt.Sprintf("start analysis log at the %s \r\n", `"`+logFileDir+`"`))
+	//fmt.Fprintln(w, fmt.Sprintf("记录总数 : %d，良品共有%d片芯片出现坏块，占比 %f%% \r\n",
+	//	badBlkMap["count"], badBlkMap["match_bad_blk"],
 	//	float64(float64(badBlkMap["match_bad_blk"]*100)/float64(badBlkMap["count"]))))
-	w.Flush()
+	//fmt.Fprintln(w, fmt.Sprintf("良品中各个坏块的占比 :"))
+	//fmt.Fprintln(w, fmt.Sprintf("blk0: %f%%, blk2: %f%%, "+
+	//	"blk4: %f%%, blk6: %f%%, "+
+	//	"blk8: %f%%,  blk10: %f%%, "+
+	//	"blk12: %f%%, blk14: %f%% \r\n",
+	//	float64(float64(badBlkMap["blk0"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk2"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk4"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk6"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk8"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk10"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk12"]*100)/float64(badBlkMap["count"])),
+	//	float64(float64(badBlkMap["blk14"]*100)/float64(badBlkMap["count"]))))
+	//
+	////fmt.Fprintln(w, fmt.Sprintf("良品记录坏块的占比(记录单次) :"))
+	////fmt.Fprintln(w, fmt.Sprintf("blk: %f%% \r\n",
+	////	float64(float64(badBlkMap["match_bad_blk"]*100)/float64(badBlkMap["count"]))))
+	//w.Flush()
+}
+
+func main() {
+
+	var resultStr string
+	buf := bytes.NewBufferString(resultStr)
+
+	fmt.Println("开始进行log分析")
+
+	fileTarget, err := listAll(`.\logpath`)
+	if err != nil {
+		log.Fatal(`error,`, err)
+	}
+	if len(fileTarget) == 0 {
+		log.Fatal(`当前logpath目录下没有文件夹`)
+	}
+
+	for _, filePaths := range fileTarget {
+		blkMap = make(map[string]*analysisTestInfo)
+		analyzeLog(filePaths)
+		buf.WriteString(spritfWriteFile(filePaths))
+		count = 0
+	}
+
+	err = ioutil.WriteFile(fileName, buf.Bytes(), os.ModePerm)
+	if err != nil {
+		fmt.Println("将结果写入文件时失败!")
+	}
+	fmt.Println("完成log分析")
+}
+
+func spritfWriteFile(logFileDir string) string {
+
+	var (
+		test      string
+		bin1Count int
+		bin2Count int
+		bin3Count int
+		bin4Count int
+		errCount  int
+	)
+
+	//binMap = make(map[string]map[string]int)
+	errMap := make(map[string]int)
+	facNMap := make(map[string]int)
+	lowNMap := make(map[string]int)
+
+	w := bytes.NewBufferString(test)
+	fmt.Fprintln(w, fmt.Sprintf("\r\n********************************************************************************"))
+	fmt.Fprintln(w, fmt.Sprintf("start analysis log at the %s", `"`+logFileDir+`"`))
+
+	for _, info := range blkMap {
+		switch info.binStr {
+		case "BIN1":
+			bin1Count = bin1Count + 1
+		case "BIN2":
+			bin2Count = bin2Count + 1
+			errMap[info.errStr] = errMap[info.errStr] + 1
+			errCount = errCount + 1
+		case "BIN3":
+			bin3Count = bin3Count + 1
+			errMap[info.errStr] = errMap[info.errStr] + 1
+			errCount = errCount + 1
+		case "BIN4":
+			bin4Count = bin4Count + 1
+			errMap[info.errStr] = errMap[info.errStr] + 1
+			errCount = errCount + 1
+		}
+
+		if info.FacN != 0 {
+			for _, facNo := range *info.FacNo {
+				facNMap[facNo] = facNMap[facNo] + 1
+			}
+		}
+		if info.lowN != 0 {
+			for _, lowNo := range *info.LowNo {
+				lowNMap[lowNo] = lowNMap[lowNo] + 1
+			}
+		}
+	}
+
+	fmt.Fprintln(w, fmt.Sprintf("总测试数量 : %d\r\n", count))
+
+	fmt.Fprintln(w, fmt.Sprintf("BIN类型占比数量"))
+	fmt.Fprintln(w, fmt.Sprintf("bin1 占比: %d，百分比 %f%%",
+		bin1Count, float64(float64(bin1Count*100)/float64(count))))
+	fmt.Fprintln(w, fmt.Sprintf("bin2 占比: %d，百分比 %f%%",
+		bin2Count, float64(float64(bin2Count*100)/float64(count))))
+	fmt.Fprintln(w, fmt.Sprintf("bin3 占比: %d，百分比 %f%%",
+		bin3Count, float64(float64(bin3Count*100)/float64(count))))
+	fmt.Fprintln(w, fmt.Sprintf("bin4 占比: %d，百分比 %f%%\r\n",
+		bin4Count, float64(float64(bin4Count*100)/float64(count))))
+
+	// error的分布
+	fmt.Fprintln(w, fmt.Sprintf("非bin1类别errcode总数：%d", errCount))
+	for errStr, errCnt := range errMap {
+		fmt.Fprintln(w, fmt.Sprintf("errcode: %s，占比: %d，百分比 %f%%",
+			errStr, errCnt, float64(float64(errCnt*100)/float64(errCount))))
+	}
+
+	//facNString, _ := json.Marshal(facNMap)
+	//lowNString, _ := json.Marshal(lowNMap)
+	//fmt.Fprintln(w, fmt.Sprintf("\r\n原厂坏块 %s", facNString))
+	//fmt.Fprintln(w, fmt.Sprintf("新增坏块 %s \r\n", lowNString))
+
+	// 导入excel
+	split := strings.Split(logFileDir, `\`)
+	facNFileName := split[len(split)-1] + "_facN.csv"
+	// Create a csv file
+	f, err := os.OpenFile(facNFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	wsv := csv.NewWriter(f)
+	// write csv
+	for facNo, count := range facNMap {
+		var record []string
+		record = append(record, facNo, strconv.FormatInt(int64(count), 10))
+		wsv.Write(record)
+	}
+	wsv.Flush()
+	fmt.Fprintln(w, fmt.Sprintf("将原厂坏块信息导入CSV文件: %s", facNFileName))
+
+	lowNFileName := split[len(split)-1] + "_lowN.csv"
+	// Create a csv file
+	f, err = os.OpenFile(lowNFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	wsv = csv.NewWriter(f)
+	// write csv
+	for lowNo, count := range lowNMap {
+		var record []string
+		record = append(record, lowNo, strconv.FormatInt(int64(count), 10))
+		wsv.Write(record)
+	}
+	wsv.Flush()
+	fmt.Fprintln(w, fmt.Sprintf("将新增坏块信息导入CSV文件: %s\r\n", lowNFileName))
+
+	return w.String()
 }
 
 func analyzeLog(logFileDir string) (err error) {
@@ -119,6 +288,10 @@ func analyzeLog(logFileDir string) (err error) {
 func analyzeLine(file *os.File) (err error) {
 
 	var (
+		trim         string
+		tm2          time.Time
+		timeStamp    int64
+		firstLine    bool
 		needAnalyStr string
 	)
 
@@ -137,66 +310,80 @@ func analyzeLine(file *os.File) (err error) {
 			continue
 		}
 
-		badBlkMap["count"] = badBlkMap["count"] + 1
+		// 第一行不需要
+		if !firstLine {
+			firstLine = true
+			continue
+		}
 
-		if logSplit[2] == "BIN1" {
-			if logSplit[5] != "0" {
+		trim = strings.Trim(fmt.Sprint(logSplit[4]), "[]")
+		tm2, _ = time.ParseInLocation("2006-01-02 15:04:05.0000",
+			trim[:len(logSplit[4])-7]+"."+trim[len(logSplit[4])-6:], time.Local)
+		timeStamp = tm2.UnixNano() / 1000000
+
+		info, ok := blkMap[logSplit[0]]
+		if ok {
+			if info.testTime > timeStamp {
+				continue
+			}
+			info.binStr = logSplit[2]
+			info.errStr = logSplit[3]
+			FacN, _ := strconv.Atoi(logSplit[5])
+			lowN, _ := strconv.Atoi(logSplit[6])
+			info.FacN = FacN
+			info.lowN = lowN
+			if info.FacN != 0 {
 				needAnalyStr = strings.TrimRight(logSplit[7], " ;")
+				facNoStr := strings.Split(needAnalyStr, " ")
+				info.FacNo = &facNoStr
 			}
-			if logSplit[6] != "0" {
-				needAnalyStr += " " + strings.TrimRight(logSplit[8], " ;")
+			if info.lowN != 0 {
+				needAnalyStr = strings.TrimRight(logSplit[8], " ;")
+				lowNoStr := strings.Split(needAnalyStr, " ")
+				info.LowNo = &lowNoStr
 			}
-			if logSplit[12] != "0" {
-				splitArr := strings.Split(strings.TrimRight(logSplit[13],
-					" ;"), " ")
-				for _, matchNo := range splitArr {
-					if !strings.Contains(needAnalyStr, matchNo) {
-						needAnalyStr += " " + matchNo
-					}
-				}
+			blkMap[logSplit[0]] = info
+		} else {
+			info = &analysisTestInfo{}
+			info.testTime = timeStamp
+			info.binStr = logSplit[2]
+			info.errStr = logSplit[3]
+			FacN, _ := strconv.Atoi(logSplit[5])
+			lowN, _ := strconv.Atoi(logSplit[6])
+			info.FacN = FacN
+			info.lowN = lowN
+			if info.FacN != 0 {
+				needAnalyStr = strings.TrimRight(logSplit[7], " ;")
+				facNoStr := strings.Split(needAnalyStr, " ")
+				info.FacNo = &facNoStr
 			}
-
-			matchBlkNo(badBlkMap, needAnalyStr)
+			if info.lowN != 0 {
+				needAnalyStr = strings.TrimRight(logSplit[8], " ;")
+				lowNoStr := strings.Split(needAnalyStr, " ")
+				info.LowNo = &lowNoStr
+			}
+			blkMap[logSplit[0]] = info
+			count = count + 1
 		}
 	}
+
+	return nil
 }
 
-func matchBlkNo(badBlkMaps map[string]int, needMatchs string) {
-	var isMatch bool
-	if strings.Contains(needMatchs, blk0) {
-		badBlkMaps["blk0"] = badBlkMaps["blk0"] + 1
-		isMatch = true
-	}
-	if strings.Contains(needMatchs, blk2) {
-		badBlkMaps["blk2"] = badBlkMaps["blk2"] + 1
-		isMatch = true
-	}
-	if strings.Contains(needMatchs, blk4) {
-		badBlkMaps["blk4"] = badBlkMaps["blk4"] + 1
-		isMatch = true
-	}
-	if strings.Contains(needMatchs, blk6) {
-		badBlkMaps["blk6"] = badBlkMaps["blk6"] + 1
-		isMatch = true
-	}
-	if strings.Contains(needMatchs, blk8) {
-		badBlkMaps["blk8"] = badBlkMaps["blk8"] + 1
-		isMatch = true
-	}
-	if strings.Contains(needMatchs, blk10) {
-		badBlkMaps["blk10"] = badBlkMaps["blk10"] + 1
-		isMatch = true
-	}
-	if strings.Contains(needMatchs, blk12) {
-		badBlkMaps["blk12"] = badBlkMaps["blk12"] + 1
-		isMatch = true
-	}
-	if strings.Contains(needMatchs, blk14) {
-		badBlkMaps["blk14"] = badBlkMaps["blk14"] + 1
-		isMatch = true
+func listAll(path string) (fileTarget []string, err error) {
+
+	fileTarget = make([]string, 0)
+
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil, err
 	}
 
-	if isMatch {
-		badBlkMaps["match_bad_blk"] = badBlkMaps["match_bad_blk"] + 1
+	for _, fi := range files {
+
+		if fi.IsDir() {
+			fileTarget = append(fileTarget, filepath.Join(path, fi.Name()))
+		}
 	}
+	return fileTarget, err
 }
