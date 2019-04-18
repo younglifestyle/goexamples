@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -13,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gpmgo/gopm/modules/log"
+	"log"
 )
 
 /*
@@ -34,15 +33,12 @@ import (
 // 原厂数   新增坏块   原厂   新增坏块
 
 const (
-	fileName = "logAnalysisResult.txt"
+	fileName = "logAnalysisResult.csv"
 )
 
 var (
 	count  int64
 	blkMap map[string]*analysisTestInfo
-
-	binMap     map[string]map[string]int
-	logFileDir string
 )
 
 type analysisTestInfo struct {
@@ -119,9 +115,6 @@ func oldCode() {
 
 func main() {
 
-	var resultStr string
-	buf := bytes.NewBufferString(resultStr)
-
 	fmt.Println("开始进行log分析")
 
 	fileTarget, err := listAll(`.\logpath`)
@@ -132,24 +125,36 @@ func main() {
 		log.Fatal(`当前logpath目录下没有文件夹`)
 	}
 
+	// Create a csv file
+	f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		log.Fatal("创建文件夹失败！, " + fileName + " 该文件或被占用")
+		return
+	}
+	defer f.Close()
+
+	// 写入UTF-8 BOM，防止中文乱码
+	f.WriteString("\xEF\xBB\xBF")
+	wsv := csv.NewWriter(f)
+
 	for _, filePaths := range fileTarget {
 		blkMap = make(map[string]*analysisTestInfo)
 		analyzeLog(filePaths)
-		buf.WriteString(spritfWriteFile(filePaths))
+		err := spritfWriteFile(filePaths, wsv)
+		if err != nil {
+			log.Printf("分析文件夹：%s，出现错误\r\n", filePaths)
+		}
 		count = 0
 	}
 
-	err = ioutil.WriteFile(fileName, buf.Bytes(), os.ModePerm)
-	if err != nil {
-		fmt.Println("将结果写入文件时失败!")
-	}
+	wsv.Flush()
+
 	fmt.Println("完成log分析")
 }
 
-func spritfWriteFile(logFileDir string) string {
+func spritfWriteFile(logFileDir string, wsvRes *csv.Writer) error {
 
 	var (
-		test      string
 		bin1Count int
 		bin2Count int
 		bin3Count int
@@ -159,28 +164,32 @@ func spritfWriteFile(logFileDir string) string {
 
 	//binMap = make(map[string]map[string]int)
 	errMap := make(map[string]int)
+	allBinErrMap := make(map[string]int)
 	facNMap := make(map[string]int)
 	lowNMap := make(map[string]int)
 
-	w := bytes.NewBufferString(test)
-	fmt.Fprintln(w, fmt.Sprintf("\r\n********************************************************************************"))
-	fmt.Fprintln(w, fmt.Sprintf("start analysis log at the %s", `"`+logFileDir+`"`))
+	wsvRes.Write([]string{""})
+	wsvRes.Write([]string{fmt.Sprintf("start analysis log at the %s", logFileDir)})
 
 	for _, info := range blkMap {
 		switch info.binStr {
 		case "BIN1":
 			bin1Count = bin1Count + 1
+			allBinErrMap[info.errStr] = allBinErrMap[info.errStr] + 1
 		case "BIN2":
 			bin2Count = bin2Count + 1
 			errMap[info.errStr] = errMap[info.errStr] + 1
+			allBinErrMap[info.errStr] = allBinErrMap[info.errStr] + 1
 			errCount = errCount + 1
 		case "BIN3":
 			bin3Count = bin3Count + 1
 			errMap[info.errStr] = errMap[info.errStr] + 1
+			allBinErrMap[info.errStr] = allBinErrMap[info.errStr] + 1
 			errCount = errCount + 1
 		case "BIN4":
 			bin4Count = bin4Count + 1
 			errMap[info.errStr] = errMap[info.errStr] + 1
+			allBinErrMap[info.errStr] = allBinErrMap[info.errStr] + 1
 			errCount = errCount + 1
 		}
 
@@ -196,29 +205,36 @@ func spritfWriteFile(logFileDir string) string {
 		}
 	}
 
-	fmt.Fprintln(w, fmt.Sprintf("总测试数量 : %d\r\n", count))
+	wsvRes.WriteAll([][]string{{"总测试数量", strconv.FormatInt(count, 10)}, {}})
 
-	fmt.Fprintln(w, fmt.Sprintf("BIN类型占比数量"))
-	fmt.Fprintln(w, fmt.Sprintf("bin1 占比: %d，百分比 %f%%",
-		bin1Count, float64(float64(bin1Count*100)/float64(count))))
-	fmt.Fprintln(w, fmt.Sprintf("bin2 占比: %d，百分比 %f%%",
-		bin2Count, float64(float64(bin2Count*100)/float64(count))))
-	fmt.Fprintln(w, fmt.Sprintf("bin3 占比: %d，百分比 %f%%",
-		bin3Count, float64(float64(bin3Count*100)/float64(count))))
-	fmt.Fprintln(w, fmt.Sprintf("bin4 占比: %d，百分比 %f%%\r\n",
-		bin4Count, float64(float64(bin4Count*100)/float64(count))))
+	wsvRes.WriteAll([][]string{{"BIN类型占比数量"},
+		{"BIN别", "数量", "占比"},
+		{"bin1", strconv.FormatInt(int64(bin1Count), 10),
+			fmt.Sprintf("%f%%", float64(float64(bin1Count*100)/float64(count)))},
+		{"bin2", strconv.FormatInt(int64(bin2Count), 10),
+			fmt.Sprintf("%f%%", float64(float64(bin2Count*100)/float64(count)))},
+		{"bin3", strconv.FormatInt(int64(bin3Count), 10),
+			fmt.Sprintf("%f%%", float64(float64(bin3Count*100)/float64(count)))},
+		{"bin4", strconv.FormatInt(int64(bin4Count), 10),
+			fmt.Sprintf("%f%%", float64(float64(bin4Count*100)/float64(count)))},
+		{},
+		{"非bin1类别errcode总数", strconv.FormatInt(int64(errCount), 10)},
+		{"errorCode", "数量", "占比"},
+	})
 
 	// error的分布
-	fmt.Fprintln(w, fmt.Sprintf("非bin1类别errcode总数：%d", errCount))
 	for errStr, errCnt := range errMap {
-		fmt.Fprintln(w, fmt.Sprintf("errcode: %s，占比: %d，百分比 %f%%",
-			errStr, errCnt, float64(float64(errCnt*100)/float64(errCount))))
+		wsvRes.Write([]string{errStr, strconv.FormatInt(int64(errCnt), 10),
+			fmt.Sprintf("%f%%", float64(float64(errCnt*100)/float64(errCount)))})
 	}
 
-	//facNString, _ := json.Marshal(facNMap)
-	//lowNString, _ := json.Marshal(lowNMap)
-	//fmt.Fprintln(w, fmt.Sprintf("\r\n原厂坏块 %s", facNString))
-	//fmt.Fprintln(w, fmt.Sprintf("新增坏块 %s \r\n", lowNString))
+	wsvRes.WriteAll([][]string{{}, {"包含bin1类别errcode总数"},
+		{"errorCode", "数量", "占比"},
+	})
+	for errStr, errCnt := range allBinErrMap {
+		wsvRes.Write([]string{errStr, strconv.FormatInt(int64(errCnt), 10),
+			fmt.Sprintf("%f%%", float64(float64(errCnt*100)/float64(count)))})
+	}
 
 	// 导入excel
 	split := strings.Split(logFileDir, `\`)
@@ -226,7 +242,7 @@ func spritfWriteFile(logFileDir string) string {
 	// Create a csv file
 	f, err := os.OpenFile(facNFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
-		return ""
+		return err
 	}
 	defer f.Close()
 	wsv := csv.NewWriter(f)
@@ -237,13 +253,12 @@ func spritfWriteFile(logFileDir string) string {
 		wsv.Write(record)
 	}
 	wsv.Flush()
-	fmt.Fprintln(w, fmt.Sprintf("将原厂坏块信息导入CSV文件: %s", facNFileName))
 
 	lowNFileName := split[len(split)-1] + "_lowN.csv"
 	// Create a csv file
 	f, err = os.OpenFile(lowNFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
-		return ""
+		return err
 	}
 	defer f.Close()
 	wsv = csv.NewWriter(f)
@@ -254,15 +269,18 @@ func spritfWriteFile(logFileDir string) string {
 		wsv.Write(record)
 	}
 	wsv.Flush()
-	fmt.Fprintln(w, fmt.Sprintf("将新增坏块信息导入CSV文件: %s\r\n", lowNFileName))
 
-	return w.String()
+	wsvRes.WriteAll([][]string{{},
+		{fmt.Sprintf("将原厂坏块信息导入CSV文件: %s", facNFileName)},
+		{fmt.Sprintf("将新增坏块信息导入CSV文件: %s", lowNFileName)},
+	})
+
+	return nil
 }
 
 func analyzeLog(logFileDir string) (err error) {
 
 	filepath.Walk(logFileDir, func(pathStr string, info os.FileInfo, err error) error {
-
 		if err != nil {
 			return err
 		}
