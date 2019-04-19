@@ -2,18 +2,18 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/csv"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gpmgo/gopm/modules/log"
+	"log"
 )
 
 /*
@@ -34,25 +34,25 @@ import (
 // 原厂数   新增坏块   原厂   新增坏块
 
 const (
-	fileName = "logAnalysisResult.txt"
+	fileName   = "logAnalysisResult.csv"
+	fileResDir = "logAnalysisResult"
 )
 
 var (
 	count  int64
 	blkMap map[string]*analysisTestInfo
-
-	binMap     map[string]map[string]int
-	logFileDir string
 )
 
 type analysisTestInfo struct {
-	binStr   string
-	errStr   string
-	testTime int64
-	FacN     int
-	lowN     int
-	FacNo    *[]string
-	LowNo    *[]string
+	binStr    string
+	errStr    string
+	testTime  int64
+	FacN      int
+	lowN      int
+	FacNFT2   int
+	FacNo     *[]string
+	LowNo     *[]string
+	FacNFT2No *[]string
 }
 
 func oldCode() {
@@ -119,9 +119,6 @@ func oldCode() {
 
 func main() {
 
-	var resultStr string
-	buf := bytes.NewBufferString(resultStr)
-
 	fmt.Println("开始进行log分析")
 
 	fileTarget, err := listAll(`.\logpath`)
@@ -132,55 +129,83 @@ func main() {
 		log.Fatal(`当前logpath目录下没有文件夹`)
 	}
 
+	os.Mkdir(fileResDir, os.ModePerm)
+	// Create a csv file
+	f, err := os.OpenFile(path.Join(fileResDir, fileName),
+		os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		log.Fatal("创建文件夹失败！, " + fileName + " 该文件或被占用")
+		return
+	}
+	defer f.Close()
+
+	// 写入UTF-8 BOM，防止中文乱码
+	f.WriteString("\xEF\xBB\xBF")
+	wsv := csv.NewWriter(f)
+
 	for _, filePaths := range fileTarget {
+
+		split := strings.Split(filePaths, `\`)
+		logStorePath := path.Join(fileResDir, split[len(split)-1])
+		os.Mkdir(logStorePath, os.ModePerm)
+
 		blkMap = make(map[string]*analysisTestInfo)
 		analyzeLog(filePaths)
-		buf.WriteString(spritfWriteFile(filePaths))
+		err := spritfWriteFile(filePaths, split[len(split)-1], logStorePath, wsv)
+		if err != nil {
+			log.Printf("分析文件夹：%s，出现错误\r\n", filePaths)
+		}
 		count = 0
 	}
 
-	err = ioutil.WriteFile(fileName, buf.Bytes(), os.ModePerm)
-	if err != nil {
-		fmt.Println("将结果写入文件时失败!")
-	}
+	wsv.Flush()
+
 	fmt.Println("完成log分析")
 }
 
-func spritfWriteFile(logFileDir string) string {
+func spritfWriteFile(logFileDir, filePrefix, logStoreRes string, wsvRes *csv.Writer) error {
 
 	var (
-		test      string
 		bin1Count int
 		bin2Count int
 		bin3Count int
 		bin4Count int
 		errCount  int
+
+		facNCnt    int
+		lowNCnt    int
+		facNFT2Cnt int
 	)
 
 	//binMap = make(map[string]map[string]int)
 	errMap := make(map[string]int)
+	allBinErrMap := make(map[string]int)
 	facNMap := make(map[string]int)
 	lowNMap := make(map[string]int)
+	facNFt2NMap := make(map[string]int)
 
-	w := bytes.NewBufferString(test)
-	fmt.Fprintln(w, fmt.Sprintf("\r\n********************************************************************************"))
-	fmt.Fprintln(w, fmt.Sprintf("start analysis log at the %s", `"`+logFileDir+`"`))
+	wsvRes.Write([]string{""})
+	wsvRes.Write([]string{fmt.Sprintf("start analysis log at the %s", logFileDir)})
 
 	for _, info := range blkMap {
 		switch info.binStr {
 		case "BIN1":
 			bin1Count = bin1Count + 1
+			allBinErrMap[info.errStr] = allBinErrMap[info.errStr] + 1
 		case "BIN2":
 			bin2Count = bin2Count + 1
 			errMap[info.errStr] = errMap[info.errStr] + 1
+			allBinErrMap[info.errStr] = allBinErrMap[info.errStr] + 1
 			errCount = errCount + 1
 		case "BIN3":
 			bin3Count = bin3Count + 1
 			errMap[info.errStr] = errMap[info.errStr] + 1
+			allBinErrMap[info.errStr] = allBinErrMap[info.errStr] + 1
 			errCount = errCount + 1
 		case "BIN4":
 			bin4Count = bin4Count + 1
 			errMap[info.errStr] = errMap[info.errStr] + 1
+			allBinErrMap[info.errStr] = allBinErrMap[info.errStr] + 1
 			errCount = errCount + 1
 		}
 
@@ -188,81 +213,114 @@ func spritfWriteFile(logFileDir string) string {
 			for _, facNo := range *info.FacNo {
 				facNMap[facNo] = facNMap[facNo] + 1
 			}
+			facNCnt = facNCnt + info.FacN
 		}
 		if info.lowN != 0 {
 			for _, lowNo := range *info.LowNo {
 				lowNMap[lowNo] = lowNMap[lowNo] + 1
 			}
+			lowNCnt = lowNCnt + info.lowN
+		}
+		if info.FacNFT2 != 0 {
+			for _, facNFT2No := range *info.FacNFT2No {
+				facNFt2NMap[facNFT2No] = facNFt2NMap[facNFT2No] + 1
+			}
+			facNFT2Cnt = facNFT2Cnt + info.FacNFT2
 		}
 	}
 
-	fmt.Fprintln(w, fmt.Sprintf("总测试数量 : %d\r\n", count))
+	wsvRes.WriteAll([][]string{{"总测试数量", strconv.FormatInt(count, 10)}, {}})
 
-	fmt.Fprintln(w, fmt.Sprintf("BIN类型占比数量"))
-	fmt.Fprintln(w, fmt.Sprintf("bin1 占比: %d，百分比 %f%%",
-		bin1Count, float64(float64(bin1Count*100)/float64(count))))
-	fmt.Fprintln(w, fmt.Sprintf("bin2 占比: %d，百分比 %f%%",
-		bin2Count, float64(float64(bin2Count*100)/float64(count))))
-	fmt.Fprintln(w, fmt.Sprintf("bin3 占比: %d，百分比 %f%%",
-		bin3Count, float64(float64(bin3Count*100)/float64(count))))
-	fmt.Fprintln(w, fmt.Sprintf("bin4 占比: %d，百分比 %f%%\r\n",
-		bin4Count, float64(float64(bin4Count*100)/float64(count))))
+	wsvRes.WriteAll([][]string{{"BIN类型占比数量"},
+		{"BIN别", "数量", "占比"},
+		{"bin1", strconv.FormatInt(int64(bin1Count), 10),
+			fmt.Sprintf("%f%%", float64(float64(bin1Count*100)/float64(count)))},
+		{"bin2", strconv.FormatInt(int64(bin2Count), 10),
+			fmt.Sprintf("%f%%", float64(float64(bin2Count*100)/float64(count)))},
+		{"bin3", strconv.FormatInt(int64(bin3Count), 10),
+			fmt.Sprintf("%f%%", float64(float64(bin3Count*100)/float64(count)))},
+		{"bin4", strconv.FormatInt(int64(bin4Count), 10),
+			fmt.Sprintf("%f%%", float64(float64(bin4Count*100)/float64(count)))},
+		{},
+		{"非bin1类别errcode总数", strconv.FormatInt(int64(errCount), 10)},
+		{"errorCode", "数量", "占比"},
+	})
 
 	// error的分布
-	fmt.Fprintln(w, fmt.Sprintf("非bin1类别errcode总数：%d", errCount))
 	for errStr, errCnt := range errMap {
-		fmt.Fprintln(w, fmt.Sprintf("errcode: %s，占比: %d，百分比 %f%%",
-			errStr, errCnt, float64(float64(errCnt*100)/float64(errCount))))
+		wsvRes.Write([]string{errStr, strconv.FormatInt(int64(errCnt), 10),
+			fmt.Sprintf("%f%%", float64(float64(errCnt*100)/float64(errCount)))})
 	}
 
-	//facNString, _ := json.Marshal(facNMap)
-	//lowNString, _ := json.Marshal(lowNMap)
-	//fmt.Fprintln(w, fmt.Sprintf("\r\n原厂坏块 %s", facNString))
-	//fmt.Fprintln(w, fmt.Sprintf("新增坏块 %s \r\n", lowNString))
+	wsvRes.WriteAll([][]string{{}, {"包含bin1类别errcode总数"},
+		{"errorCode", "数量", "占比"},
+	})
+	for errStr, errCnt := range allBinErrMap {
+		wsvRes.Write([]string{errStr, strconv.FormatInt(int64(errCnt), 10),
+			fmt.Sprintf("%f%%", float64(float64(errCnt*100)/float64(count)))})
+	}
 
 	// 导入excel
-	split := strings.Split(logFileDir, `\`)
-	facNFileName := split[len(split)-1] + "_facN.csv"
+	facNFileName := path.Join(logStoreRes, filePrefix+"_facNo.csv")
 	// Create a csv file
 	f, err := os.OpenFile(facNFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
-		return ""
+		return err
 	}
 	defer f.Close()
 	wsv := csv.NewWriter(f)
+	wsv.Write([]string{"total", strconv.FormatInt(int64(facNCnt), 10)})
+	wsv.Write([]string{"FacNo", "FacN"})
 	// write csv
 	for facNo, count := range facNMap {
-		var record []string
-		record = append(record, facNo, strconv.FormatInt(int64(count), 10))
-		wsv.Write(record)
+		wsv.Write([]string{facNo, strconv.FormatInt(int64(count), 10)})
 	}
 	wsv.Flush()
-	fmt.Fprintln(w, fmt.Sprintf("将原厂坏块信息导入CSV文件: %s", facNFileName))
 
-	lowNFileName := split[len(split)-1] + "_lowN.csv"
+	lowNFileName := path.Join(logStoreRes, filePrefix+"_lowNo.csv")
 	// Create a csv file
 	f, err = os.OpenFile(lowNFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
-		return ""
+		return err
 	}
 	defer f.Close()
 	wsv = csv.NewWriter(f)
+	wsv.Write([]string{"total", strconv.FormatInt(int64(lowNCnt), 10)})
+	wsv.Write([]string{"lowNo", "lowN"})
 	// write csv
 	for lowNo, count := range lowNMap {
-		var record []string
-		record = append(record, lowNo, strconv.FormatInt(int64(count), 10))
-		wsv.Write(record)
+		wsv.Write([]string{lowNo, strconv.FormatInt(int64(count), 10)})
 	}
 	wsv.Flush()
-	fmt.Fprintln(w, fmt.Sprintf("将新增坏块信息导入CSV文件: %s\r\n", lowNFileName))
 
-	return w.String()
+	facNFT2FileName := path.Join(logStoreRes, filePrefix+"_facNFT2.csv")
+	// Create a csv file
+	f, err = os.OpenFile(facNFT2FileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	wsv = csv.NewWriter(f)
+	wsv.Write([]string{"total", strconv.FormatInt(int64(facNFT2Cnt), 10)})
+	wsv.Write([]string{"FT2FacNo", "FacN_FT2"})
+	// write csv
+	for ft2No, count := range facNFt2NMap {
+		wsv.Write([]string{ft2No, strconv.FormatInt(int64(count), 10)})
+	}
+	wsv.Flush()
+
+	wsvRes.WriteAll([][]string{{},
+		{fmt.Sprintf("将原厂坏块信息导入CSV文件: %s", facNFileName)},
+		{fmt.Sprintf("将新增坏块信息导入CSV文件: %s", lowNFileName)},
+		{fmt.Sprintf("将FacN_FT2信息导入CSV文件: %s", facNFT2FileName)},
+	})
+
+	return nil
 }
 
 func analyzeLog(logFileDir string) (err error) {
 
 	filepath.Walk(logFileDir, func(pathStr string, info os.FileInfo, err error) error {
-
 		if err != nil {
 			return err
 		}
@@ -330,6 +388,7 @@ func analyzeLine(file *os.File) (err error) {
 			info.errStr = logSplit[3]
 			FacN, _ := strconv.Atoi(logSplit[5])
 			lowN, _ := strconv.Atoi(logSplit[6])
+			facNFT2, _ := strconv.Atoi(logSplit[10])
 			info.FacN = FacN
 			info.lowN = lowN
 			if info.FacN != 0 {
@@ -341,6 +400,11 @@ func analyzeLine(file *os.File) (err error) {
 				needAnalyStr = strings.TrimRight(logSplit[8], " ;")
 				lowNoStr := strings.Split(needAnalyStr, " ")
 				info.LowNo = &lowNoStr
+			}
+			if facNFT2 != 0 {
+				needAnalyStr = strings.TrimRight(logSplit[11], " ;")
+				facNFT2NoStr := strings.Split(needAnalyStr, " ")
+				info.FacNFT2No = &facNFT2NoStr
 			}
 			blkMap[logSplit[0]] = info
 		} else {
@@ -350,8 +414,10 @@ func analyzeLine(file *os.File) (err error) {
 			info.errStr = logSplit[3]
 			FacN, _ := strconv.Atoi(logSplit[5])
 			lowN, _ := strconv.Atoi(logSplit[6])
+			facNFT2, _ := strconv.Atoi(logSplit[10])
 			info.FacN = FacN
 			info.lowN = lowN
+			info.FacNFT2 = facNFT2
 			if info.FacN != 0 {
 				needAnalyStr = strings.TrimRight(logSplit[7], " ;")
 				facNoStr := strings.Split(needAnalyStr, " ")
@@ -361,6 +427,11 @@ func analyzeLine(file *os.File) (err error) {
 				needAnalyStr = strings.TrimRight(logSplit[8], " ;")
 				lowNoStr := strings.Split(needAnalyStr, " ")
 				info.LowNo = &lowNoStr
+			}
+			if facNFT2 != 0 {
+				needAnalyStr = strings.TrimRight(logSplit[11], " ;")
+				facNFT2NoStr := strings.Split(needAnalyStr, " ")
+				info.FacNFT2No = &facNFT2NoStr
 			}
 			blkMap[logSplit[0]] = info
 			count = count + 1
