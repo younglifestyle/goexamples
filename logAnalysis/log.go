@@ -34,12 +34,9 @@ import (
 // 原厂数   新增坏块   原厂   新增坏块
 
 const (
-<<<<<<< HEAD
-	fileName   = "logAnalysisResult.csv"
+	//fileName   = "logAnalysisResult.csv"
 	fileResDir = "logAnalysisResult"
-=======
-	fileName = "logAnalysisResult.csv"
->>>>>>> 7e8e128a3dc7af8461835fae769f1aad75b7229f
+	fileName   = "logAnalysisResult.csv"
 )
 
 var (
@@ -133,15 +130,10 @@ func main() {
 		log.Fatal(`当前logpath目录下没有文件夹`)
 	}
 
-<<<<<<< HEAD
 	os.Mkdir(fileResDir, os.ModePerm)
 	// Create a csv file
 	f, err := os.OpenFile(path.Join(fileResDir, fileName),
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
-=======
-	// Create a csv file
-	f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
->>>>>>> 7e8e128a3dc7af8461835fae769f1aad75b7229f
 	if err != nil {
 		log.Fatal("创建文件夹失败！, " + fileName + " 该文件或被占用")
 		return
@@ -160,11 +152,7 @@ func main() {
 
 		blkMap = make(map[string]*analysisTestInfo)
 		analyzeLog(filePaths)
-<<<<<<< HEAD
 		err := spritfWriteFile(filePaths, split[len(split)-1], logStorePath, wsv)
-=======
-		err := spritfWriteFile(filePaths, wsv)
->>>>>>> 7e8e128a3dc7af8461835fae769f1aad75b7229f
 		if err != nil {
 			log.Printf("分析文件夹：%s，出现错误\r\n", filePaths)
 		}
@@ -176,11 +164,7 @@ func main() {
 	fmt.Println("完成log分析")
 }
 
-<<<<<<< HEAD
 func spritfWriteFile(logFileDir, filePrefix, logStoreRes string, wsvRes *csv.Writer) error {
-=======
-func spritfWriteFile(logFileDir string, wsvRes *csv.Writer) error {
->>>>>>> 7e8e128a3dc7af8461835fae769f1aad75b7229f
 
 	var (
 		bin1Count int
@@ -310,7 +294,6 @@ func spritfWriteFile(logFileDir string, wsvRes *csv.Writer) error {
 	}
 	wsv.Flush()
 
-<<<<<<< HEAD
 	facNFT2FileName := path.Join(logStoreRes, filePrefix+"_facNFT2.csv")
 	// Create a csv file
 	f, err = os.OpenFile(facNFT2FileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
@@ -331,11 +314,6 @@ func spritfWriteFile(logFileDir string, wsvRes *csv.Writer) error {
 		{fmt.Sprintf("将原厂坏块信息导入CSV文件: %s", facNFileName)},
 		{fmt.Sprintf("将新增坏块信息导入CSV文件: %s", lowNFileName)},
 		{fmt.Sprintf("将FacN_FT2信息导入CSV文件: %s", facNFT2FileName)},
-=======
-	wsvRes.WriteAll([][]string{{},
-		{fmt.Sprintf("将原厂坏块信息导入CSV文件: %s", facNFileName)},
-		{fmt.Sprintf("将新增坏块信息导入CSV文件: %s", lowNFileName)},
->>>>>>> 7e8e128a3dc7af8461835fae769f1aad75b7229f
 	})
 
 	return nil
