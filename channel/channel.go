@@ -64,14 +64,4 @@ func main() {
 	fmt.Println("Channel close and range")
 	channelClose()
 
-	var str123 interface{}
-	fixInter(str123)
-	fmt.Println("1:", str123)
-}
-
-func fixInter(test interface{}) {
-	str := test.(string)
-
-	str = "132"
-	fmt.Println("1:", str)
 }

@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"time"
+
+	"github.com/globalsign/mgo/bson"
 )
 
 const (
@@ -116,7 +118,23 @@ func P2(num int) (newNum int) {
 	return
 }
 
+type A struct{}
+
+func (a A) m() {
+	fmt.Println("func m...")
+}
+func (a *A) n() {
+	fmt.Println("func n...")
+}
+
 func main() {
+	ao := A{}
+	ao.m()
+	ao.n()
+
+	ap := &A{}
+	ap.m()
+	ap.n()
 
 	newNum := P2(-123214)
 	fmt.Println(newNum)
@@ -134,6 +152,12 @@ func main() {
 	fmt.Println(x, y, z, k, p)
 
 	time.Now()
+
+	var objectId bson.ObjectId
+
+	objectId = ""
+
+	fmt.Println(objectId)
 
 	// list *[]int
 	//list := new([]int)

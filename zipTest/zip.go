@@ -14,8 +14,10 @@ import (
 
 func main() {
 
+	err := os.Rename("1234", "./tst1/1234")
+
 	// /home/zanghong/zipTest/testDir
-	err := zipit("./testDir", "backup.zip")
+	//err := zipit("./testDir", "backup.zip")
 
 	log.Println(err)
 }

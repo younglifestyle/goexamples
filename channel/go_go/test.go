@@ -2,17 +2,24 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"time"
 )
 
+var tCh chan struct{}
+
 func main() {
+	tCh = make(chan struct{})
+
 	go thread()
-	fmt.Printf("Main pid: %d\n", os.Getpid())
-	time.Sleep(100 * time.Second)
+
+	<-tCh
 }
 
 func thread() {
-	fmt.Printf("Child pid: %d", os.Getpid())
-	time.Sleep(100 * time.Second)
+
+	time.Sleep(time.Second)
+
+	fmt.Println("go...")
+
+	tCh <- struct{}{}
 }

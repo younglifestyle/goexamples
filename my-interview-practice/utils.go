@@ -1,9 +1,20 @@
 package utils
 
 import (
+	"reflect"
 	"strconv"
 	"unsafe"
 )
+
+// StringToSlice string to slice with out data copy
+func StringToSlice(s string) (b []byte) {
+	pbytes := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	pstring := (*reflect.StringHeader)(unsafe.Pointer(&s))
+	pbytes.Data = pstring.Data
+	pbytes.Len = pstring.Len
+	pbytes.Cap = pstring.Len
+	return
+}
 
 // ToString unsafe 转换, 将 []byte 转换为 string
 func ToString(p []byte) string {

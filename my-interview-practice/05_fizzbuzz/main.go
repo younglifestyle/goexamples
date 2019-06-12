@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // fizzbuzz问题：
 // 输入一个整数
@@ -48,4 +51,13 @@ func main() {
 	fmt.Println(fuzzByte, buzzByte)
 
 	fuzzbuzz(18)
+
+	var a []int
+	b := []int{}
+	bytes, err := json.Marshal(a)
+	fmt.Println(string(bytes), err)
+
+	bytes, err = json.Marshal(b)
+	fmt.Println(string(bytes), err)
+
 }
