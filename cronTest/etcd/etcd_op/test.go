@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
+	"go.etcd.io/etcd/clientv3"
 )
 
 // kv.Do(op)
@@ -27,7 +27,7 @@ func main() {
 
 	// 客户端配置
 	config = clientv3.Config{
-		Endpoints:   []string{"www.wukoon-app.com:2379"},
+		Endpoints:   []string{"127.0.0.1:2379"},
 		DialTimeout: 5 * time.Second,
 	}
 

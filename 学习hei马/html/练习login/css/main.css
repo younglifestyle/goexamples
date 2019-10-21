@@ -1,0 +1,104 @@
+body {
+    margin: 0;
+}
+
+.header {
+    width: 952px;
+    height: 103px;
+    /*background: #f0ae90;*/
+    margin: 0 auto;
+    padding-top: 31px;
+}
+
+.login_bg {
+    height: 391px;
+    background: #518e17;
+}
+
+.login_img {
+    width:942px;
+    height:482px;
+    /* background:gold; */
+    margin:0 auto;
+}
+
+.banner{
+    float: left;
+    margin-top:41px;
+}
+
+.slogan {
+    color: #f0f9e8;
+    font-size: 28px;
+    font-family: "Microsoft YaHei", serif;
+    width: 30px;
+    height: 300px;
+    float: left;
+    text-align: center;
+    line-height: 36px;
+    margin: 41px 0 0 115px;
+}
+
+.form_con {
+    float: left;
+    background: #ffffff;
+    width:310px;
+    height:340px;
+    margin: 30px 0 0 50px;
+}
+
+.form_con .input_con {
+    width:250px;
+    height:250px;
+    /*background: #000;*/
+    margin: 30px auto;
+}
+
+.form_con .new_title {
+    width:250px;
+    height:30px;
+    margin: 15px auto;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.form_con h3 {
+    float: left;
+
+    /*  清楚H3标题默认的外边距  */
+    color: #bbbbbb;
+
+    font-size: 20px;
+
+    font-family: "Microsoft YaHei", serif;
+
+    font-weight: bold;
+
+    margin: 0 0 0 35px;
+
+    line-height: 40px;
+}
+
+.form_con img {
+    float: left;
+
+    margin: 13px 6px 0 0;
+}
+
+.form_con a {
+    float: right;
+
+    /*  清楚H3标题默认的外边距  */
+    color: #5fb42a;
+
+    font-size: 12px;
+
+    font-family: "Microsoft YaHei", serif;
+
+    font-weight: normal;
+
+    line-height: 40px;
+
+    /*    去掉文件默认下划线*/
+    text-decoration: none;
+}

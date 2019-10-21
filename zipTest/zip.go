@@ -14,7 +14,7 @@ import (
 
 func main() {
 
-	err := os.Rename("1234", "./tst1/1234")
+	err := os.Rename("./test111/test", "./test111/test1")
 
 	// /home/zanghong/zipTest/testDir
 	//err := zipit("./testDir", "backup.zip")

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>document</title>
+
+    <style>
+        .sty01 {
+            color: #321f4f;
+            font-size: 20px;
+        }
+
+        .sty02 {
+            color: pink;
+            font-size: 30px;
+            text-decoration: none;
+        }
+    </style>
+
+    <script>
+        window.onload = function () {
+            var oDiv = document.getElementById("div01");
+            var oA = document.getElementById("link01");
+
+            var sId = oDiv.id;
+            alert(sId);
+
+            // 操作属性
+            oDiv.style.color = 'red';
+            oDiv.style.fontSize = '30px';
+
+            oA.className = 'sty02'
+        }
+    </script>
+</head>
+<body>
+    <div id="div01">这是一个DIV</div>
+    <a href="#" class="sty01" id="link01">link</a>
+</body>
+</html>

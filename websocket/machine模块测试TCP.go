@@ -7,6 +7,10 @@ import (
 	"time"
 	"unsafe"
 
+	"gitlab.com/Utils/ErrCode"
+
+	"gitlab.com/Utils/structdefine"
+
 	"gitlab.com/link"
 	"gitlab.com/link/codec"
 )
@@ -77,20 +81,48 @@ func BytesToMyStruct(b []byte) *tyBIBInfo {
 }
 
 func main() {
-	json := codec.Byte()
-
+	json := codec.Json()
+	json.RegisterName("structdefine/Ctrl",
+		structdefine.Ctrl{})
 	//server, err := link.Listen("tcp", "0.0.0.0:0", json, 0 /* sync send */, link.HandlerFunc(serverSessionLoop))
 	//checkErr(err)
 	//addr := server.Listener().Addr().String()
 	//fmt.Println(addr)
 	//go server.Serve()
 
-	client, err := link.Dial("tcp", "0.0.0.0:12000", json, 0)
+	client, err := link.Dial("tcp",
+		"172.16.9.229:9996", json, 0)
 	checkErr(err)
+	err = client.Send(&structdefine.Ctrl{
+		Cmd:     "init", // update
+		Mid:     13,
+		Agentid: "AGENT_00FF4AAA2255",
+	})
+	//err = client.Send(
+	//	map[string]interface{}{
+	//		"Head": "gitlab.com/Utils/structdefine/Ctrl",
+	//		"Body": map[string]string{"cmd": "hello"},
+	//	})
 
-	clientSessionLoop(client)
+	fmt.Println(err)
 
-	select {}
+	for {
+		rsp, err := client.Receive()
+		checkErr(err)
+
+		fmt.Println("receive :", rsp)
+
+		ctrl := rsp.(*structdefine.Ctrl)
+
+		fmt.Printf("%+v \n", ctrl)
+
+		err = client.Send(&structdefine.Ctrl{
+			Tag:     ctrl.Tag,
+			ErrCode: ErrCode.ErrCode{0, "ok"},
+		})
+	}
+
+	//clientSessionLoop(client)
 }
 
 func clientSessionLoop(session *link.Session) {
@@ -107,12 +139,10 @@ func clientSessionLoop(session *link.Session) {
 		bytes := MyStructToBytes(bibInfo)
 
 		err := session.Send(bytes)
-		if err != nil {
-			fmt.Println("error :",err)
-		}
+		checkErr(err)
 		log.Printf("Send: %d ", i)
 
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Millisecond * 1)
 		//rsp, err := session.Receive()
 		//checkErr(err)
 		//bytes, ok := rsp.([]byte)

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .search_form {
+            width: 602px;
+            height: 42px;
+            background: gold;
+            margin: 100px auto;
+        }
+
+        .input_txt {
+            width: 500px;
+            height: 40px;
+            border: 1px solid #0fad10;
+        /*    清楚输入框默认的padding值*/
+            padding: 0;
+
+            float: left;
+
+            font-size: 18px;
+
+            /* 让文字缩进 */
+            text-indent: 10px;
+            /* 去掉输入框点击时显示的蓝色高亮框 */
+            outline: none;
+        }
+
+        .input_sub {
+            width: 100px;
+            height: 42px;
+            background: #0fad10;
+            border: 0;
+            float: left;
+            font-size: 18px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <form class="search_form" action="https://cn.bing.com/search">
+        <input type="text" class="input_txt" name="q" placeholder="请输入">
+        <input type="submit" class="input_sub" value="搜 索">
+    </form>
+</body>
+</html>

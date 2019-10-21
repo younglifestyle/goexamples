@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>document</title>
+    <style>
+
+        body {
+            margin: 0;
+        }
+
+        .news_con {
+            width: 285px;
+            height: 310px;
+            border-top: solid #c8dcf2;
+            border-bottom: solid #c8dcf2;
+
+            /* 水平居中 */
+            margin: 0 auto;
+        }
+
+        .news_con div {
+            height: 40px;
+        }
+
+        .news_con h3 {
+            float: left;
+
+            /*  清楚H3标题默认的外边距  */
+            color: #172c45;
+
+            font-size: 16px;
+
+            font-family: "Microsoft YaHei", serif;
+
+            font-weight: normal;
+
+            margin: 0;
+
+            line-height: 40px;
+        }
+
+        .news_con a {
+            float: right;
+
+            /*  清楚H3标题默认的外边距  */
+            color: #172c45;
+
+            font-size: 12px;
+
+            font-family: "Microsoft YaHei", serif;
+
+            font-weight: normal;
+
+            line-height: 40px;
+
+        /*    去掉文件默认下划线*/
+            text-decoration: none;
+        }
+
+        .news_con p {
+            color: #737373;
+
+            font-size: 12px;
+
+            font-family: "Microsoft YaHei", serif;
+
+            line-height: 20px;
+
+            text-indent: 24px;
+
+        /*    清楚P标签默认的外边距*/
+            margin: 10px 0 0;
+        }
+    </style>
+</head>
+<body>
+
+{{/*ul>li{123}*6*/}}
+
+    <div class="news_con">
+        <div class="news_title">
+            <h3>今日头条</h3>
+            <a href="#">更多&gt;&gt;</a>
+        </div>
+
+        <img src="images/banner.jpg" alt="banner">
+
+        <p>人工智能（Artificial Intelligence），英文缩写为AI。它是研究、开发用于模拟、延伸和扩展人的智能的理论、方法、技术及应用系统的一门新的技术科学。人工智能是计算机科学的一个分支，它企图了解智能的实质，并生产出一种新的能以人类智能相似的方式做出反应的智能机器，该领域的研究包括机器人、语言识别、图像识别、自然语言处理和专家系统等。</p>
+    </div>
+</body>
+</html>
