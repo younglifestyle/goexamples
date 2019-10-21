@@ -1,0 +1,20 @@
+[input]
+type = "sock"
+[input.config]
+
+[processor]
+
+[processor.1]
+type = "jsonLog"
+
+[processor.2]
+type = "lengthCheck"
+
+[processor.3]
+type = "httpStream"
+
+[processor.4]
+type = "sample"
+
+[processor.5]
+type = "classify"

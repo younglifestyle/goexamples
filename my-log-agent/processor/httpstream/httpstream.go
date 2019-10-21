@@ -3,9 +3,9 @@ package httpstream
 import (
 	"context"
 
-	"go-common/app/service/ops/log-agent/event"
-	"go-common/app/service/ops/log-agent/processor"
-	phttpstream "go-common/app/service/ops/log-agent/pkg/httpstream"
+	"goexamples/my-log-agent/event"
+	phttpstream "goexamples/my-log-agent/httpstream"
+	"goexamples/my-log-agent/processor"
 )
 
 type HttpStream struct {

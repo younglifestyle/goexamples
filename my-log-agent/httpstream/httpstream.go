@@ -62,8 +62,6 @@ func (s *HttpStream) LogStreamer() func(w http.ResponseWriter, req *http.Request
 			return
 		}
 
-		fmt.Println("1")
-
 		if reg, ok := params["regexp"]; ok {
 			if filterReg, err := regexp.Compile(reg[0]); err == nil {
 				f.reg = filterReg
@@ -73,13 +71,9 @@ func (s *HttpStream) LogStreamer() func(w http.ResponseWriter, req *http.Request
 			}
 		}
 
-		fmt.Println("2")
-
 		if instanceId, ok := params["instance_id"]; ok {
 			f.instanceId = instanceId[0]
 		}
-
-		fmt.Println("3")
 
 		if maxLines, ok := params["max_lines"]; ok {
 			if n, err := strconv.Atoi(maxLines[0]); err == nil {
@@ -89,8 +83,6 @@ func (s *HttpStream) LogStreamer() func(w http.ResponseWriter, req *http.Request
 				return
 			}
 		}
-
-		fmt.Println("4")
 
 		s.add(logstream, f)
 		go func() {
@@ -118,27 +110,22 @@ func (s *HttpStream) httpStreamer(ctx context.Context, w http.ResponseWriter, re
 	}
 	c := 0
 
-	fmt.Println("12332131")
 	for {
 		select {
 		case e := <-logstream:
 
-			fmt.Println("1231")
 			if f.appId != "" && string(e.AppId) != f.appId {
 				continue
 			}
 
-			fmt.Println("1232")
 			if f.reg != nil && !f.reg.Match(e.Bytes()) {
 				continue
 			}
 
-			fmt.Println("1233")
 			if f.instanceId != "" && !bytes.Contains(e.Bytes(), []byte(f.instanceId)) {
 				continue
 			}
 
-			fmt.Println("1234")
 			if f.maxLines != 0 && c >= f.maxLines {
 				s.remove(logstream)
 				return
