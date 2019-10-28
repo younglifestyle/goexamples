@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"log"
@@ -30,4 +31,11 @@ func main() {
 		log.Println("error :", err)
 		return
 	}
+
+	var dest []User
+	db.Debug().Raw("SELECT * FROM users " +
+		"WHERE info->'$.nihao' = ?",
+		"123").Scan(&dest)
+
+	fmt.Println(dest[0].Info)
 }
